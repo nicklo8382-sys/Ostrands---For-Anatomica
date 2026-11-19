@@ -81,6 +81,9 @@ Versions follow upstream OStrands with one extra number: `upstream.version.fork-
 
 ### Changelog
 
+**0.8.0.5** (2026-11-20, personal build, based on upstream 0.8.0)
+- What is handed to Anatomica is counted in normal loads: a Colossal Load (or a big OCum load) now counts as several, so he holds, gushes and squirts that much more.
+
 **0.8.0.4** (2026-11-20, personal build, based on upstream 0.8.0)
 - [CreatureSemen] / [CreatureShape] are now **Colossal Load** ([ColossalLoad]; the old sections are still read and moved on the next save). On by default, with bigger defaults.
 - Without Anatomica, a Colossal Load is for creatures only, and only when More Nasty Critters (MoreNastyCritters.esp) is loaded.
