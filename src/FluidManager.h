@@ -103,6 +103,9 @@ namespace OStrands
 			std::array<float, 3> colour{};
 			int                 planned{ 0 };
 			SemenProfile        profile;             // 0.8.0.4: this giver's load (normal, Colossal, or Anatomica's)
+			float               size{ 1.0f };        // 0.8.0.6: drawn this much bigger
+			float               stick{ -1.0f };      // 0.8.0.6: its stickiness (-1 = [Semen] Stickiness)
+			bool                heldIn{ false };     // 0.8.0.6: started inside an Anatomica anus - stays in while the tip is near
 		};
 
 		struct Blob
@@ -190,6 +193,8 @@ namespace OStrands
 			bool                           creature{ false };
 			bool                           custom{ false };   // 0.8.0.4: flows like the first load that coloured it
 			SemenProfile                   profile;
+			float                          size{ 1.0f };   // 0.8.0.6: globs and ropes drawn this much bigger
+			float                          stick{ -1.0f }; // 0.8.0.6: its own stickiness (-1 = [Semen] Stickiness)
 			bool                           coloured{ false };
 			std::array<float, 3>           colour{};
 			std::string                    tint;

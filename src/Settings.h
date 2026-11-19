@@ -56,6 +56,10 @@ namespace OStrands
 		bool anatomicaHandOver{ true };
 		bool anatomicaColour{ true };
 		bool anatomicaLoad{ true };   // 0.8.0.4: Anatomica decides who gets a Colossal Load
+		bool  anatomicaHold{ true };       // 0.8.0.6: a finish that starts inside an Anatomica anus stays in him while the tip is near
+		float anatomicaOverflow{ 0.1f };   // 0.8.0.6: share that spills out round the shaft there (Anatomica lets the rest out later)
+		float anatomicaOutStickiness{ 0.9f };   // 0.8.0.6: what Anatomica lets out of him clings to his skin and runs down it
+		float anatomicaOutViscosity{ 70.0f };   // 0.8.0.6: and how thick and slow it flows
 
 		float bridgeRate{ 2.1f };
 		int   maxPerStroke{ 2 };

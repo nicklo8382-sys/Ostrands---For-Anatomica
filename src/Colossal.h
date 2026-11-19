@@ -31,4 +31,5 @@ namespace OStrands::Colossal
 	float        StrandRadius(const Kind& a_kind);
 	float        CrotchRadius(const Kind& a_kind);
 	bool         OwnMinRadius(const Kind& a_kind);   // the [ColossalLoad] minimum radius applies (not linked)
+	float        Size(const Kind& a_kind);           // 0.8.0.6: how much bigger its globs and ropes are drawn (1 = normal)
 }

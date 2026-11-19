@@ -81,6 +81,11 @@ Versions follow upstream OStrands with one extra number: `upstream.version.fork-
 
 ### Changelog
 
+**0.8.0.6** (2026-11-20, personal build, based on upstream 0.8.0)
+- With Anatomica: a finish that starts inside his anus stays in him while the tip is near ([Anatomica] Hold), and only [Anatomica] Overflow (10%) spills out round the shaft - Anatomica lets the rest out later. Before, half spilled at once and the rest sprayed out whenever the animation pulled back, so most of it ended on the floor.
+- Its own stickiness / thickness for what Anatomica lets out of him ([Anatomica] OutStickiness 0.9, OutViscosity 70), separate from the schlong's spurts ([Semen] Stickiness); a Colossal Load clings more (x its thickness).
+- A Colossal Load is drawn bigger: its globs and ropes are scaled by its thickness (Anatomica's "Strand thickness", or [ColossalLoad] Radius / [Shape] Radius without Anatomica).
+
 **0.8.0.5** (2026-11-20, personal build, based on upstream 0.8.0)
 - What is handed to Anatomica is counted in normal loads: a Colossal Load (or a big OCum load) now counts as several, so he holds, gushes and squirts that much more.
 

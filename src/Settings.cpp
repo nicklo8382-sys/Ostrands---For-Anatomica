@@ -263,6 +263,10 @@ namespace OStrands
 			b("Anatomica", "HandOver", &Settings::anatomicaHandOver);
 			b("Anatomica", "Colour", &Settings::anatomicaColour);
 			b("Anatomica", "Load", &Settings::anatomicaLoad);
+			b("Anatomica", "Hold", &Settings::anatomicaHold);
+			f("Anatomica", "Overflow", &Settings::anatomicaOverflow);
+			f("Anatomica", "OutStickiness", &Settings::anatomicaOutStickiness);
+			f("Anatomica", "OutViscosity", &Settings::anatomicaOutViscosity);
 			f("Shape", "Radius", &Settings::radius);
 			f("Shape", "MinRadius", &Settings::minRadius);
 			f("Crotch", "Radius", &Settings::crotchRadius);
@@ -449,6 +453,9 @@ namespace OStrands
 		fluidLifetime = bounded(fluidLifetime, defaults.fluidLifetime, kLifetimeMin, kLifetimeMax);
 		fluidFade = bounded(fluidFade, defaults.fluidFade, kFadeMin, kFadeMax);
 		fluidMaxParticles = std::clamp(fluidMaxParticles, kParticlesMin, kParticlesMax);
+		anatomicaOverflow = bounded(anatomicaOverflow, defaults.anatomicaOverflow, 0.0f, 1.0f);
+		anatomicaOutStickiness = bounded(anatomicaOutStickiness, defaults.anatomicaOutStickiness, kStickinessMin, kStickinessMax);
+		anatomicaOutViscosity = bounded(anatomicaOutViscosity, defaults.anatomicaOutViscosity, kViscosityMin, kViscosityMax);
 		fluidTestKey = fluidTestKey > 0 && fluidTestKey <= kKeyMax ? fluidTestKey : 0;
 		revealingKey = revealingKey > 0 && revealingKey <= kKeyMax ? revealingKey : 0;
 	}
@@ -534,6 +541,10 @@ namespace OStrands
 		b("Anatomica", "HandOver", anatomicaHandOver);
 		b("Anatomica", "Colour", anatomicaColour);
 		b("Anatomica", "Load", anatomicaLoad);
+		b("Anatomica", "Hold", anatomicaHold);
+		f("Anatomica", "Overflow", anatomicaOverflow);
+		f("Anatomica", "OutStickiness", anatomicaOutStickiness);
+		f("Anatomica", "OutViscosity", anatomicaOutViscosity);
 
 		CSimpleIniA::TNamesDepend rigKeys;
 		ini.GetAllKeys("CreatureRigs", rigKeys);

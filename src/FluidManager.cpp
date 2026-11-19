@@ -439,6 +439,12 @@ namespace OStrands
 			return;
 		}
 		Colour(*domain, false, a_event.colour ? *a_event.colour : GiverColour(nullptr, false));
+		if (!domain->custom) {   // 0.8.0.6: what Anatomica lets out of him flows by its own settings
+			domain->custom = true;
+			domain->profile = settings.Semen(false);
+			domain->profile.viscosity = settings.anatomicaOutViscosity;
+			domain->stick = settings.anatomicaOutStickiness;
+		}
 		const std::uint64_t key = (static_cast<std::uint64_t>(a_event.actor.native_handle()) << 32) | a_event.stream;
 		auto&               stream = _streams[key];
 		const float         now = domain->age;
@@ -616,6 +622,10 @@ namespace OStrands
 		const auto kind = Colossal::Of(actor.get(), receiver.get());
 		emitter.creature = kind.colossal;
 		emitter.profile = Colossal::Profile(kind);
+		emitter.size = Colossal::Size(kind);
+		if (kind.linked && kind.colossal) {   // 0.8.0.6: a thicker load clings more too
+			emitter.stick = std::clamp(settings.semenStickiness * std::sqrt(std::max(kind.sticky, 0.01f)), Settings::kStickinessMin, Settings::kStickinessMax);
+		}
 		const auto& profile = emitter.profile;
 		emitter.colour = profile.colour;
 		if (!kind.hasColour) {
@@ -623,9 +633,9 @@ namespace OStrands
 		}
 		emitter.amount = profile.amount;
 		if (settings.debugLog && kind.colossal) {
-			logger::info("{}: Colossal Load ({}) - amount {:.2f}, {} spurts, strength {:.2f}, viscosity {:.0f}", actor->GetDisplayFullName(),
+			logger::info("{}: Colossal Load ({}) - amount {:.2f}, {} spurts, strength {:.2f}, viscosity {:.0f}, drawn x{:.2f}", actor->GetDisplayFullName(),
 				kind.linked ? std::format("Anatomica, {:.0f}%", kind.weight * 100.0f) : std::string("creature, More Nasty Critters"), profile.amount,
-				profile.pulses, profile.strength, profile.viscosity);
+				profile.pulses, profile.strength, profile.viscosity, emitter.size);
 		}
 		if (auto it = _loads.find(a_event.actor.native_handle()); it != _loads.end()) {
 			const float fraction = it->second.first;
@@ -716,6 +726,15 @@ namespace OStrands
 			auto*      receiver3D = receiver ? receiver->Get3D(false) : nullptr;
 			if (receiver3D && !FindOpening(receiver3D, OpeningOf(a_emitter.pair->act), rim, center, inward)) {
 				inside = (end - center).Dot(inward) > 0.0f;
+				// 0.8.0.6: once a finish is going into an Anatomica anus, keep it in him while the tip stays close
+				if (settings.anatomicaHold && EffectiveOpening(receiver3D, OpeningOf(a_emitter.pair->act)) == Opening::kAnus &&
+					AnatomicaBridge::TakesOver(receiver.get())) {
+					if (inside) {
+						a_emitter.heldIn = true;
+					} else if (a_emitter.heldIn && end.GetDistance(center) < 12.0f * receiver3D->world.scale) {
+						inside = true;
+					}
+				}
 			}
 		}
 		if (a_emitter.hasNozzle && a_delta > 0.0f) {
@@ -750,6 +769,8 @@ namespace OStrands
 		if (!domain->custom) {
 			domain->custom = true;
 			domain->profile = a_emitter.profile;
+			domain->size = a_emitter.size;
+			domain->stick = a_emitter.stick;
 		}
 		if (a_emitter.pair) {
 			const std::pair opening{ a_emitter.pair->receiver, OpeningOf(a_emitter.pair->act) };
@@ -780,7 +801,8 @@ namespace OStrands
 			if (a_emitter.emitted == 0 && a_emitter.slot <= 0.0f) {
 				a_emitter.run = ++_nextRun;
 				a_emitter.oozing = inside && !rim.empty();
-				a_emitter.count = a_emitter.oozing ? std::max(1, static_cast<int>(std::lround(pulse.particles * settings.semenOverflow))) :
+				const float overflow = a_emitter.heldIn ? settings.anatomicaOverflow : settings.semenOverflow;   // 0.8.0.6
+				a_emitter.count = a_emitter.oozing ? std::max(1, static_cast<int>(std::lround(pulse.particles * overflow))) :
 				                                     pulse.particles;
 				if (a_emitter.oozing) {
 					Deposit(a_emitter, static_cast<float>(pulse.particles - a_emitter.count));
@@ -963,6 +985,7 @@ namespace OStrands
 			if (!domain->custom) {
 				domain->custom = true;
 				domain->profile = profile;
+				domain->size = Colossal::Size(kind);
 			}
 		}
 		const std::pair opening{ a_reservoir.actor, a_reservoir.opening };
@@ -1218,7 +1241,7 @@ namespace OStrands
 		SampleGround(a_domain);
 		if (a_domain.custom) {
 			const auto& p = a_domain.profile;
-			a_domain.solver->Configure({ 4, p.cohesion, p.viscosity, 9.81f, p.stretch, 30.0f, Settings::Get().semenStickiness });
+			a_domain.solver->Configure({ 4, p.cohesion, p.viscosity, 9.81f, p.stretch, 30.0f, a_domain.stick >= 0.0f ? a_domain.stick : Settings::Get().semenStickiness });
 		} else {
 			a_domain.solver->Configure(SemenParameters(a_domain.creature));
 		}
@@ -1504,6 +1527,7 @@ namespace OStrands
 		const Vec3  along = Fluid::Normalize(a_velocity, { 0.0f, 0.0f, 1.0f });
 		const float squash = a_contact ? kSquash : 1.0f;
 		const Vec3  normal = a_contact ? *a_contact : Vec3{ 0.0f, 0.0f, 1.0f };
+		a_radius *= a_domain.size;   // 0.8.0.6: a Colossal Load's globs are bigger
 		const Vec3  center = a_contact ? a_center - normal * (a_radius * (1.0f - squash) * 0.7f) : a_center;
 		for (std::size_t i = 0; i < a_blob.bones.size(); ++i) {
 			const Vec3      direction = _directions[i];
@@ -1577,7 +1601,7 @@ namespace OStrands
 			radii[b] = radius;
 		}
 		for (auto& radius : radii) {
-			radius *= kUnitsPerMeter;
+			radius *= kUnitsPerMeter * a_domain.size;   // 0.8.0.6: thicker ropes for a Colossal Load
 		}
 		Bend(a_rope, positions, radii);
 	}

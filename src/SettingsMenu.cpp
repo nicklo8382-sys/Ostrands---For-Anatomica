@@ -536,6 +536,16 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Toggle>("Anatomica's Colossal Load",
 				"Anatomica (2.6c or newer) decides who gets a Colossal Load and how big - set on its Integrations page.",
 				&Settings::anatomicaLoad, linkOn));
+			page.push_back(std::make_unique<Toggle>("Hold the load in",
+				"A finish that starts inside an Anatomica anus stays in him while the tip is near, even if the animation pulls back.",
+				&Settings::anatomicaHold, linkOn));
+			page.push_back(std::make_unique<Slider<float>>("Spills out round the shaft", "Share of a load inside an Anatomica anus that spills out at once (the rest Anatomica lets out later).",
+				&Settings::anatomicaOverflow, 0.0f, 1.0f, 0.05f, linkOn));
+			page.push_back(std::make_unique<Slider<float>>("What comes out of him: stickiness",
+				"How much what Anatomica lets out of him (ooze, gush, flood, squirt) clings to his skin and runs down it. The schlong's own spurts use Stickiness above.",
+				&Settings::anatomicaOutStickiness, Settings::kStickinessMin, Settings::kStickinessMax, 0.05f, linkOn));
+			page.push_back(std::make_unique<Slider<float>>("What comes out of him: thickness", "How thick and slow it flows.",
+				&Settings::anatomicaOutViscosity, Settings::kViscosityMin, Settings::kViscosityMax, 1.0f, linkOn));
 
 			page.push_back(std::make_unique<Heading>("Lifetime"));
 			page.push_back(std::make_unique<Slider<float>>("Lifetime", "Seconds semen stays before it fades away.", &Settings::fluidLifetime,

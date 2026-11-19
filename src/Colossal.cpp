@@ -70,4 +70,13 @@ namespace OStrands::Colossal
 	}
 
 	bool OwnMinRadius(const Kind& a_kind) { return !a_kind.linked && a_kind.colossal; }
+
+	float Size(const Kind& a_kind)
+	{
+		if (a_kind.linked) {
+			return std::clamp(a_kind.thick, 0.5f, 3.0f);
+		}
+		const auto& settings = Settings::Get();
+		return a_kind.colossal && settings.creatureShape ? std::clamp(settings.creatureRadius / std::max(settings.radius, 0.01f), 0.5f, 3.0f) : 1.0f;
+	}
 }
