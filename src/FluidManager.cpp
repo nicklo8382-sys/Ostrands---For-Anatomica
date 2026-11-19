@@ -863,7 +863,7 @@ namespace OStrands
 			auto* root = receiver->Get3D(false);
 			if (root && EffectiveOpening(root, opening) == Opening::kAnus && AnatomicaBridge::TakesOver(receiver.get())) {
 				const float share = a_particles / static_cast<float>(std::max(a_emitter.planned, 1));
-				const float scale = a_emitter.amount / std::max(a_emitter.profile.amount, 0.01f);
+				const float scale = a_emitter.amount / std::max(Settings::Get().Semen(false).amount, 0.01f);   // 0.8.0.5: in normal loads (a Colossal Load counts as several)
 				const auto  giver = a_emitter.actor.get();
 				AnatomicaBridge::SemenIn(receiver.get(), giver.get(), share * scale, a_emitter.colour);
 				if (Settings::Get().debugLog) {
