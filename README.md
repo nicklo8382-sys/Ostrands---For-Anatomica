@@ -2,7 +2,7 @@
 
 OStrands is an SKSE plugin for Skyrim SE/AE. It draws procedural strands, drips and semen in OStim and SexLab scenes.
 
-This is a modified build of [OStrands by LeonVanWinkle (Saint)](https://gitlab.com/LilRicefield/ostrands), with contributions from crajjjj, based on [Keevan2374's fork](https://gitlab.com/Keevan2374/ostrands). It links OStrands to [Anatomica - Anatomical Anus for HIMBO](#anatomica-link) and adds a few settings of its own. The current version is **0.8.0.6**, based on upstream OStrands 0.8.0.
+This is a modified build of [OStrands by LeonVanWinkle (Saint)](https://gitlab.com/LilRicefield/ostrands), with contributions from crajjjj, based on [Keevan2374's fork](https://gitlab.com/Keevan2374/ostrands). It links OStrands to [Anatomica - Anatomical Anus for HIMBO](#anatomica-link) and adds a few settings of its own. The current version is **0.8.0.7**, based on upstream OStrands 0.8.0.
 
 All credit for OStrands itself goes to its original authors - see [Credits](#credits).
 
@@ -66,6 +66,15 @@ Radius = 0.14
 [Semen]
 ; 0-255 red, green, blue
 Colour = 236, 233, 222
+; glowing semen
+Glow = false
+GlowCumColour = true
+GlowColour = 140, 190, 255
+GlowStrength = 1.0
+
+[Spawn]
+; strings between the rim and the tip as it slides out (0 = off)
+PullStrings = 3
 ```
 
 How big a Colossal Load is, and who gets one, is set in Anatomica's menu (Integrations page > Colossal Load).
@@ -74,6 +83,7 @@ How big a Colossal Load is, and who gets one, is set in Anatomica's menu (Integr
 
 - `OStrands_ApiVersion()`
 - `OStrands_Emit(actor, stream, point[3], velocity[3] in units/s, count, rgb[3] or null)` - adds semen at a point
+- `OStrands_EmitGlow(actor, stream, point[3], velocity[3], count, rgb[3] or null, glow[4] or null)` - the same, glowing (glow: rgb 0-1 and strength)
 - `OStrands_SemenOn()` - whether semen is enabled
 
 ### Building
@@ -87,9 +97,17 @@ How big a Colossal Load is, and who gets one, is set in Anatomica's menu (Integr
 
 ### Versions
 
-Versions follow upstream OStrands with one extra number: `upstream.version.revision`. `0.8.0.6` is based on upstream 0.8.0.
+Versions follow upstream OStrands with one extra number: `upstream.version.revision`. `0.8.0.7` is based on upstream 0.8.0.
 
 ### Changelog
+
+**0.8.0.7**
+- Strings on pull-out: as the tip slides right out, strings stretch between the rim and the tip, thin and snap (`[Spawn] PullStrings`, 0 = off; Strands page).
+- Glowing semen: `[Semen] Glow` - in its own colour or `GlowColour`, with `GlowStrength` (Semen page). With Anatomica 2.6i+, Anatomica can make only some men's glow.
+- Beaded strings: strings gather into beads as they stretch thin (`[Shape] Beads`).
+- Splats: drops that land on skin flatten and spread (`[Semen] Splats`).
+- Thick cords: a Colossal Load comes out in thick, unbroken cords (`[ColossalLoad] Cords`).
+- `OStrands_EmitGlow` for other SKSE plugins.
 
 **0.8.0.6**
 - A finish that starts inside an Anatomica anus stays in him while the tip is near (`[Anatomica] Hold`), and only `[Anatomica] Overflow` (10%) spills out round the shaft; Anatomica lets the rest out later. Before, most of it ended up on the floor.

@@ -24,7 +24,8 @@ namespace OStrands
 		void EndThread(std::int32_t a_thread);
 		void Scene(std::int32_t a_thread, std::vector<RE::ActorHandle> a_actors);
 		bool Inject(RE::ActorHandle a_host, std::uint32_t a_stream, RE::NiPoint3 a_point, RE::NiPoint3 a_velocity, int a_count,
-			std::optional<std::array<float, 3>> a_colour);
+			std::optional<std::array<float, 3>> a_colour, std::optional<std::array<float, 4>> a_glow = std::nullopt);
+		static std::array<float, 4> GiverGlow(RE::Actor* a_giver, const std::array<float, 3>& a_colour);   // 0.8.0.7
 
 		void Reset();
 		void Update(float a_delta);
@@ -61,6 +62,7 @@ namespace OStrands
 			RE::NiPoint3                 velocity;
 			int                          count{ 0 };
 			std::optional<std::array<float, 3>> colour;
+			std::optional<std::array<float, 4>> glow;   // 0.8.0.7
 		};
 
 		struct Pulse
@@ -101,6 +103,7 @@ namespace OStrands
 			bool                inside{ false };
 			bool                creature{ false };   // 0.8.0.4: a Colossal Load
 			std::array<float, 3> colour{};
+			std::array<float, 4> glow{};   // 0.8.0.7
 			int                 planned{ 0 };
 			SemenProfile        profile;             // 0.8.0.4: this giver's load (normal, Colossal, or Anatomica's)
 			float               size{ 1.0f };        // 0.8.0.6: drawn this much bigger
@@ -197,6 +200,7 @@ namespace OStrands
 			float                          stick{ -1.0f }; // 0.8.0.6: its own stickiness (-1 = [Semen] Stickiness)
 			bool                           coloured{ false };
 			std::array<float, 3>           colour{};
+			std::array<float, 4>           glow{};   // 0.8.0.7: emissive rgb + strength (0 = none)
 			std::string                    tint;
 		};
 
@@ -231,7 +235,7 @@ namespace OStrands
 		void        ShowShapes(float a_delta);
 		void        Shade(Domain& a_domain, RE::NiAVObject* a_root);
 		void        Tint(Domain& a_domain, RE::NiAVObject* a_root, std::string& a_applied);
-		void        Colour(Domain& a_domain, bool a_creature, const std::array<float, 3>& a_colour);
+		void        Colour(Domain& a_domain, bool a_creature, const std::array<float, 3>& a_colour, const std::array<float, 4>& a_glow = {});
 		void        InjectNow(const Event& a_event);
 		static std::array<float, 3> GiverColour(RE::Actor* a_giver, bool a_creature);
 		void        Release(Domain& a_domain);

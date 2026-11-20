@@ -109,6 +109,7 @@ namespace OStrands
 			float   cooldown{ 0.0f };
 			float   receiverDrip{ -1.0f };
 			float   giverDrip{ -1.0f };
+			bool    wasIn{ false };   // 0.8.0.7: the tip was inside (strings when it slides out)
 		};
 
 		struct End
@@ -142,6 +143,7 @@ namespace OStrands
 			float                               shine{ -1.0f };
 			float                               gloss{ -1.0f };
 			float                               radius{ 0.0f };
+			float                               radius0{ 0.0f };   // 0.8.0.7: its radius when it started (beads as it thins)
 			float                               age{ 0.0f };
 			float                               fade{ 1.0f };
 			float                               fadeRate{ 0.0f };
@@ -206,6 +208,7 @@ namespace OStrands
 		void        TrackSurface(PairState& a_state, float a_delta, const SurfaceSettings& a_surface);
 		void        TickDrips(PairState& a_state, float a_delta);
 		bool        SpawnBridges(PairState& a_state);
+		void SpawnPullStrings(PairState& a_state);   // 0.8.0.7
 		void        SpawnCrotch(PairState& a_state);
 		void        SpawnSurface(PairState& a_state, const SurfaceSettings& a_surface);
 		void        SpawnDrip(PairState& a_state, Source a_source);

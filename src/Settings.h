@@ -63,6 +63,10 @@ namespace OStrands
 
 		float bridgeRate{ 2.1f };
 		int   maxPerStroke{ 2 };
+		int   pullStrings{ 3 };
+		float beads{ 0.6f };       // 0.8.0.7: strings bead up as they thin (0 = only just before they snap, as before)
+		float splats{ 0.5f };      // 0.8.0.7: drops that land on skin flatten into a splash (0 = as before)
+		bool  colossalCords{ true };   // 0.8.0.7: a Colossal Load comes out in thick unbroken cords   // 0.8.0.7: strings between the rim and the tip as it slides out (0 = off)
 		int   maxPerPair{ 5 };
 		int   maxTotal{ 20 };
 		float cooldown{ 0.25f };
@@ -178,6 +182,10 @@ namespace OStrands
 		float semenOverflow{ 0.5f };
 		float ocumWait{ 0.5f };
 		std::array<float, 3> semenColour{ 236.0f / 255.0f, 233.0f / 255.0f, 222.0f / 255.0f };
+		bool                 semenGlow{ false };                         // 0.8.0.7: semen glows (emissive)
+		bool                 glowCumColour{ true };                      // glow in the semen's own colour
+		std::array<float, 3> glowColour{ 0.55f, 0.75f, 1.0f };
+		float                glowStrength{ 1.0f };
 
 		bool  collision{ true };
 		float collisionThickness{ 1.0f };

@@ -336,7 +336,7 @@ namespace OStrands
 	}
 
 	bool FluidManager::Inject(RE::ActorHandle a_host, std::uint32_t a_stream, RE::NiPoint3 a_point, RE::NiPoint3 a_velocity, int a_count,
-		std::optional<std::array<float, 3>> a_colour)
+		std::optional<std::array<float, 3>> a_colour, std::optional<std::array<float, 4>> a_glow)
 	{
 		if (!SemenEnabled() || !Settings::Get().enabled) {
 			return false;
@@ -351,6 +351,7 @@ namespace OStrands
 		event.velocity = a_velocity;
 		event.count = a_count;
 		event.colour = a_colour;
+		event.glow = a_glow;
 		_pending.push_back(std::move(event));
 		return true;
 	}
@@ -362,13 +363,28 @@ namespace OStrands
 		return colour;
 	}
 
-	void FluidManager::Colour(Domain& a_domain, bool a_creature, const std::array<float, 3>& a_colour)
+	std::array<float, 4> FluidManager::GiverGlow(RE::Actor* a_giver, const std::array<float, 3>& a_colour)
+	{
+		std::array<float, 4> glow{};
+		if (a_giver && AnatomicaBridge::CumGlow(a_giver, glow)) {   // Anatomica: this man's cum glows (vampire, daedra, his race...)
+			return glow;
+		}
+		const auto& settings = Settings::Get();
+		if (!settings.semenGlow) {
+			return {};
+		}
+		const auto& c = settings.glowCumColour ? a_colour : settings.glowColour;
+		return { c[0], c[1], c[2], settings.glowStrength };
+	}
+
+	void FluidManager::Colour(Domain& a_domain, bool a_creature, const std::array<float, 3>& a_colour, const std::array<float, 4>& a_glow)
 	{
 		a_domain.creature = a_domain.creature || a_creature;
 		if (a_domain.coloured) {
 			return;
 		}
 		a_domain.coloured = true;
+		a_domain.glow = a_glow;
 		a_domain.colour = a_colour;
 		a_domain.tint = TintTexture(a_colour);
 		for (auto& blob : a_domain.blobs) {
@@ -438,7 +454,10 @@ namespace OStrands
 		if (!domain) {
 			return;
 		}
-		Colour(*domain, false, a_event.colour ? *a_event.colour : GiverColour(nullptr, false));
+		{
+			const auto colour = a_event.colour ? *a_event.colour : GiverColour(nullptr, false);
+			Colour(*domain, false, colour, a_event.glow ? *a_event.glow : GiverGlow(nullptr, colour));
+		}
 		if (!domain->custom) {   // 0.8.0.6: what Anatomica lets out of him flows by its own settings
 			domain->custom = true;
 			domain->profile = settings.Semen(false);
@@ -626,11 +645,17 @@ namespace OStrands
 		if (kind.linked && kind.colossal) {   // 0.8.0.6: a thicker load clings more too
 			emitter.stick = std::clamp(settings.semenStickiness * std::sqrt(std::max(kind.sticky, 0.01f)), Settings::kStickinessMin, Settings::kStickinessMax);
 		}
+		if (kind.colossal && settings.colossalCords) {   // 0.8.0.7: thick unbroken cords
+			emitter.profile.cohesion = std::clamp(emitter.profile.cohesion * 1.8f, Settings::kCohesionMin, Settings::kCohesionMax);
+			emitter.profile.stretch = std::clamp(emitter.profile.stretch * 1.8f, Settings::kStretchMin, Settings::kStretchMax);
+			emitter.size *= 1.15f;
+		}
 		const auto& profile = emitter.profile;
 		emitter.colour = profile.colour;
 		if (!kind.hasColour) {
 			AnatomicaBridge::CumColour(actor.get(), emitter.colour);
 		}
+		emitter.glow = GiverGlow(actor.get(), emitter.colour);
 		emitter.amount = profile.amount;
 		if (settings.debugLog && kind.colossal) {
 			logger::info("{}: Colossal Load ({}) - amount {:.2f}, {} spurts, strength {:.2f}, viscosity {:.0f}, drawn x{:.2f}", actor->GetDisplayFullName(),
@@ -765,7 +790,7 @@ namespace OStrands
 			}
 			a_emitter.domain = domain->id;
 		}
-		Colour(*domain, a_emitter.creature, a_emitter.colour);
+		Colour(*domain, a_emitter.creature, a_emitter.colour, a_emitter.glow);
 		if (!domain->custom) {
 			domain->custom = true;
 			domain->profile = a_emitter.profile;
@@ -981,7 +1006,7 @@ namespace OStrands
 			if (!kind.hasColour) {
 				AnatomicaBridge::CumColour(plug.get(), colour);
 			}
-			Colour(*domain, kind.colossal, colour);
+			Colour(*domain, kind.colossal, colour, GiverGlow(plug.get(), colour));
 			if (!domain->custom) {
 				domain->custom = true;
 				domain->profile = profile;
@@ -1399,6 +1424,15 @@ namespace OStrands
 					material->specularColorScale = settings.shine;
 					material->specularPower = settings.gloss;
 				}
+				// 0.8.0.7: glowing semen - the shader's own emissive colour
+				if (auto* lighting = netimmerse_cast<RE::BSLightingShaderProperty*>(shader)) {
+					const bool glow = a_domain.glow[3] > 0.0f;
+					lighting->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, glow);
+					if (lighting->emissiveColor) {
+						*lighting->emissiveColor = glow ? RE::NiColor{ a_domain.glow[0], a_domain.glow[1], a_domain.glow[2] } : RE::NiColor{ 0.0f, 0.0f, 0.0f };
+					}
+					lighting->emissiveMult = glow ? a_domain.glow[3] : 0.0f;
+				}
 			}
 		}
 	}
@@ -1525,13 +1559,18 @@ namespace OStrands
 		const float flying = a_contact ? 0.0f : std::max(Fluid::Length(a_velocity) - kStreakStart, 0.0f);
 		const float stretch = 1.0f + std::min(flying * kStreak, kMaxStretch - 1.0f);
 		const Vec3  along = Fluid::Normalize(a_velocity, { 0.0f, 0.0f, 1.0f });
-		const float squash = a_contact ? kSquash : 1.0f;
+		const float splat = a_contact ? Settings::Get().splats : 0.0f;   // 0.8.0.7: flatter and wider where it lands on skin
+		const float squash = a_contact ? kSquash * (1.0f - 0.55f * splat) : 1.0f;
 		const Vec3  normal = a_contact ? *a_contact : Vec3{ 0.0f, 0.0f, 1.0f };
 		a_radius *= a_domain.size;   // 0.8.0.6: a Colossal Load's globs are bigger
 		const Vec3  center = a_contact ? a_center - normal * (a_radius * (1.0f - squash) * 0.7f) : a_center;
 		for (std::size_t i = 0; i < a_blob.bones.size(); ++i) {
 			const Vec3      direction = _directions[i];
-			const Vec3      offset = Stretch(Stretch(direction, along, stretch), normal, squash);
+			Vec3            offset = Stretch(Stretch(direction, along, stretch), normal, squash);
+			if (splat > 0.0f) {   // spread out across the skin (keeps roughly its volume)
+				const float n = Fluid::Dot(offset, normal);
+				offset = normal * n + (offset - normal * n) * (1.0f + 0.5f * splat);
+			}
 			const Vec3      facing = Fluid::Normalize(Stretch(Stretch(direction, along, 1.0f / stretch), normal, 1.0f / squash), direction);
 			RE::NiTransform world;
 			world.translate = ToWorld(a_domain, center + offset * a_radius);

@@ -1,6 +1,7 @@
 OStrands by LeonVanWinkle (Saint), with contributions from crajjjj.
 
-This is a modified version of OStrands 0.8.0, released as 0.8.0.3. It is
+This is a modified version of OStrands 0.8.0, released as 0.8.0.7 and packaged with Anatomica - Anatomical Anus for HIMBO
+(optional installer option). It is
 distributed under the GNU General Public License version 3; see
 OStrands-LICENSE.txt.
 
@@ -29,5 +30,24 @@ Modifications:
   - Anatomica link ([Anatomica]): the anus position comes from Anatomica,
     loads that go into an Anatomica anus are handed to Anatomica, and other
     mods can add semen through the exported OStrands_Emit.
+- 0.8.0.4, personal build (Claude for Riotguards), 2026-11-20:
+  - [CreatureSemen] / [CreatureShape] renamed Colossal Load ([ColossalLoad];
+    the old sections are still read and moved on save). With Anatomica 2.6c+
+    Anatomica decides who gets one and how big (exported Anatomica_LoadKind).
+- 0.8.0.5, personal build (Claude for Riotguards), 2026-11-20:
+  - What is handed to Anatomica is counted in normal loads.
+- 0.8.0.6, personal build (Claude for Riotguards), 2026-11-20:
+  - [Anatomica] Hold / Overflow: a finish inside an Anatomica anus stays in
+    while the tip is near; only the overflow spills round the shaft.
+  - [Anatomica] OutStickiness / OutViscosity for what Anatomica lets out.
+  - A Colossal Load's globs and ropes are scaled by its thickness.
+- 0.8.0.7, personal build (Claude for Riotguards), 2026-11-20:
+  - Strings between the rim and the tip on pull-out ([Spawn] PullStrings).
+  - Glowing semen ([Semen] Glow / GlowCumColour / GlowColour / GlowStrength),
+    and per giver from Anatomica (Anatomica_CumGlow); OStrands_EmitGlow.
+  - Beaded strings ([Shape] Beads), splats ([Semen] Splats), thick cords for
+    a Colossal Load ([ColossalLoad] Cords).
 
-Source code: https://gitlab.com/Keevan2374/ostrands
+Source code: the complete source of this build is linked on the
+Anatomica mod page (Permissions and credits). Upstream fork: https://gitlab.com/Keevan2374/ostrands
+Original OStrands: https://gitlab.com/LilRicefield/ostrands

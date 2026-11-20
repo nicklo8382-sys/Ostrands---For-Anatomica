@@ -644,6 +644,17 @@ namespace OStrands
 		a_state.cooldown -= a_delta;
 		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * a_delta, kMaxBudget);
 
+		// 0.8.0.7: the tip slides right out - strings stretch between the rim and the tip, thin and snap
+		if (!anchors.toy) {
+			if (depth > 0.5f) {
+				a_state.wasIn = true;
+			} else if (depth < -0.5f) {
+				if (a_state.wasIn && settings.pullStrings > 0 && a_state.settle <= 0.0f && anchors.tip.GetDistance(anchors.center) < 12.0f) {
+					SpawnPullStrings(a_state);
+				}
+				a_state.wasIn = false;
+			}
+		}
 		const Crossing crossing = a_state.stroke.Step(-depth, a_delta, { kStrokeNear, kStrokeNearMax, kStrokeGap, kStrokeGapMax }, a_state.settle <= 0.0f);
 		_statStroke = std::max(_statStroke, a_state.stroke.Range());
 		if (crossing == Crossing::kArrived) {
@@ -778,6 +789,7 @@ namespace OStrands
 		a_strand.volume = kPi * a_radius * a_radius * std::max(length, 1.0f);
 		a_strand.startLength = length;
 		a_strand.radius = a_radius;
+		a_strand.radius0 = a_radius;
 		a_strand.age = 0.0f;
 		a_strand.fade = 1.0f;
 		a_strand.fadeRate = 0.0f;
@@ -847,6 +859,37 @@ namespace OStrands
 			++_statBridges;
 		}
 		return true;
+	}
+
+	void StrandManager::SpawnPullStrings(PairState& a_state)
+	{
+		const auto& settings = Settings::Get();
+		const auto& anchors = a_state.anchors;
+		if (anchors.chain.empty() || anchors.opening.empty()) {
+			return;
+		}
+		RE::NiAVObject* bone = anchors.chain.back();
+		std::uniform_int_distribution<int> extra(0, 1);
+		int count = std::min(settings.pullStrings + extra(_rng), settings.maxPerPair - Count(a_state.pair, Kind::kBridge));
+		std::vector<Point> rims = anchors.opening;
+		std::ranges::shuffle(rims, _rng);
+		std::uniform_real_distribution<float> spread(-0.35f, 0.35f);
+		const RE::NiPoint3 side = Normalized(anchors.inward.Cross(RE::NiPoint3{ 0.0f, 0.0f, 1.0f }), RE::NiPoint3{ 1.0f, 0.0f, 0.0f });
+		const RE::NiPoint3 up = Normalized(anchors.inward.Cross(side), RE::NiPoint3{ 0.0f, 0.0f, 1.0f });
+		const float radius = Colossal::StrandRadius(Colossal::Of(a_state.pair.giver.get().get(), a_state.pair.receiver.get().get()));
+		for (int n = 0; n < count && n < static_cast<int>(rims.size()); ++n) {
+			Strand* strand = AcquireStrand();
+			if (!strand) {
+				return;
+			}
+			const RE::NiPoint3 at = anchors.tip + side * spread(_rng) + up * spread(_rng);   // round the tip, not all from one point
+			StartBetween(*strand, Kind::kBridge, a_state, End{ RE::NiPointer<RE::NiAVObject>(rims[n].node), rims[n].local },
+				End{ RE::NiPointer<RE::NiAVObject>(bone), bone->world.Invert() * at }, radius * 1.15f);
+			++_statBridges;
+		}
+		if (settings.debugLog) {
+			logger::info("pull-out: {} string(s) between the rim and the tip", std::min(count, static_cast<int>(rims.size())));
+		}
 	}
 
 	void StrandManager::SpawnCrotch(PairState& a_state)
@@ -1240,7 +1283,11 @@ namespace OStrands
 		const int             last = static_cast<int>(kBones) - 1;
 		GeometryMath::UpdateFrames(a_strand.frames, a_strand.pos, a_strand.breakAt);
 
-		const float beading = std::clamp(1.0f - (a_strand.radius - minRadius) / (0.8f * minRadius), 0.0f, 1.0f);
+		float beading = std::clamp(1.0f - (a_strand.radius - minRadius) / (0.8f * minRadius), 0.0f, 1.0f);
+		if (!drip && settings.beads > 0.0f && a_strand.radius0 > 0.0f) {   // 0.8.0.7: beads as it thins, not only just before it snaps
+			const float thin = std::clamp((1.0f - a_strand.radius / a_strand.radius0) / 0.45f, 0.0f, 1.0f);
+			beading = std::max(beading, settings.beads * thin);
+		}
 
 		for (int i = 0; i <= last; ++i) {
 			const float t = static_cast<float>(i) / last;

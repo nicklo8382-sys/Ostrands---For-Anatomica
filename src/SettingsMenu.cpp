@@ -382,6 +382,10 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Heading>("Spawning"));
 			page.push_back(std::make_unique<Slider<float>>("Bridge rate", "Most strands per second between the opening and the shaft.",
 				&Settings::bridgeRate, Settings::kRateMin, Settings::kRateMax, 0.1f, on));
+			page.push_back(std::make_unique<Slider<float>>("Beaded strings", "Strings gather into beads along their length as they stretch thin. 0 = only just before they snap.",
+				&Settings::beads, 0.0f, 1.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<int>>("Strings on pull-out", "Strings that stretch between the rim and the tip as it slides out, then thin and snap. 0 = off.",
+				&Settings::pullStrings, 0.0f, 8.0f, 1.0f, on));
 			page.push_back(std::make_unique<Slider<float>>("Crotch rate", "Most strands per second between the bodies.", &Settings::crotchRate,
 				Settings::kRateMin, Settings::kRateMax, 0.1f, on));
 			page.push_back(std::make_unique<Slider<int>>("Max strands", "Most strands on screen at once.", &Settings::maxTotal,
@@ -497,6 +501,16 @@ namespace OStrands::SettingsMenu
 
 			page.push_back(std::make_unique<ColourPick>("Colour", "Colour of the semen. Anatomica's per-race colours win when the Anatomica link is on.",
 				&Settings::semenColour, active));
+			page.push_back(std::make_unique<Slider<float>>("Splats", "Drops that land on skin flatten and spread into a splash. 0 = they stay round.",
+				&Settings::splats, 0.0f, 1.0f, 0.05f, active));
+			page.push_back(std::make_unique<Toggle>("Glow", "Semen glows faintly, lighting itself in the dark. Anatomica can make only some men's glow (vampires, daedra, races you pick) when this is off.",
+				&Settings::semenGlow, active));
+			const auto glowing = [] { return Settings::Get().enabled && Settings::Get().semenGlow; };
+			page.push_back(std::make_unique<Toggle>("Glow in its own colour", "The glow takes the semen's colour. Off: the glow colour below.",
+				&Settings::glowCumColour, glowing));
+			page.push_back(std::make_unique<ColourPick>("Glow colour", "Colour of the glow when it does not take the semen's colour.", &Settings::glowColour,
+				[] { return Settings::Get().enabled && Settings::Get().semenGlow && !Settings::Get().glowCumColour; }));
+			page.push_back(std::make_unique<Slider<float>>("Glow strength", "How bright the glow is.", &Settings::glowStrength, 0.0f, 5.0f, 0.1f, glowing));
 
 			const auto creature = [] { return Settings::Get().enabled && FluidManager::Get().SemenEnabled() && Settings::Get().creatureSemen; };
 			page.push_back(std::make_unique<Heading>("Colossal Load"));
@@ -518,6 +532,7 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Slider<float>>("Colossal stretch", "How far Colossal Load strings stretch before they snap.", &Settings::creatureStretch,
 				Settings::kStretchMin, Settings::kStretchMax, 0.5f, creature));
 			page.push_back(std::make_unique<ColourPick>("Colossal colour", "Colour of a Colossal Load.", &Settings::creatureColour, creature));
+			page.push_back(std::make_unique<Toggle>("Thick cords", "A Colossal Load comes out in thick, unbroken cords instead of separate globs.", &Settings::colossalCords, creature));
 
 			page.push_back(std::make_unique<Heading>("Anatomica"));
 			page.push_back(std::make_unique<Note>([] { return AnatomicaBridge::Describe(); }));

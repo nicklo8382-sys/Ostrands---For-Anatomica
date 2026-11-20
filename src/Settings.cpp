@@ -258,6 +258,14 @@ namespace OStrands
 			f("ColossalLoad", "CrotchRadius", &Settings::creatureCrotchRadius);
 			f("ColossalLoad", "CrotchMinRadius", &Settings::creatureCrotchMinRadius);
 			colour("Semen", "Colour", &Settings::semenColour);
+			b("Semen", "Glow", &Settings::semenGlow);
+			b("Semen", "GlowCumColour", &Settings::glowCumColour);
+			colour("Semen", "GlowColour", &Settings::glowColour);
+			f("Semen", "GlowStrength", &Settings::glowStrength);
+			i("Spawn", "PullStrings", &Settings::pullStrings);
+			f("Shape", "Beads", &Settings::beads);
+			f("Semen", "Splats", &Settings::splats);
+			b("ColossalLoad", "Cords", &Settings::colossalCords);
 			b("Anatomica", "Enabled", &Settings::anatomica);
 			b("Anatomica", "Hole", &Settings::anatomicaHole);
 			b("Anatomica", "HandOver", &Settings::anatomicaHandOver);
@@ -405,6 +413,10 @@ namespace OStrands
 			return std::isfinite(value) ? std::clamp(value, min, max) : fallback;
 		};
 		bridgeRate = bounded(bridgeRate, defaults.bridgeRate, kRateMin, kRateMax);
+		pullStrings = std::clamp(pullStrings, 0, 8);
+		beads = std::isfinite(beads) ? std::clamp(beads, 0.0f, 1.0f) : 0.6f;
+		splats = std::isfinite(splats) ? std::clamp(splats, 0.0f, 1.0f) : 0.5f;
+		glowStrength = std::isfinite(glowStrength) ? std::clamp(glowStrength, 0.0f, 5.0f) : 1.0f;
 		transparency = bounded(transparency, defaults.transparency, kTransparencyMin, kTransparencyMax);
 		shine = bounded(shine, defaults.shine, kShineMin, kShineMax);
 		gloss = bounded(gloss, defaults.gloss, kGlossMin, kGlossMax);
@@ -536,6 +548,10 @@ namespace OStrands
 		f("ColossalLoad", "CrotchRadius", creatureCrotchRadius);
 		f("ColossalLoad", "CrotchMinRadius", creatureCrotchMinRadius);
 		colour("Semen", "Colour", semenColour);
+		b("Semen", "Glow", semenGlow);
+		b("Semen", "GlowCumColour", glowCumColour);
+		colour("Semen", "GlowColour", glowColour);
+		f("Semen", "GlowStrength", glowStrength);
 		b("Anatomica", "Enabled", anatomica);
 		b("Anatomica", "Hole", anatomicaHole);
 		b("Anatomica", "HandOver", anatomicaHandOver);
@@ -566,6 +582,10 @@ namespace OStrands
 
 		f("Spawn", "Rate", bridgeRate);
 		i("Spawn", "MaxPerStroke", maxPerStroke);
+		i("Spawn", "PullStrings", pullStrings);
+		f("Shape", "Beads", beads);
+		f("Semen", "Splats", splats);
+		b("ColossalLoad", "Cords", colossalCords);
 		i("Spawn", "MaxPerPair", maxPerPair);
 		i("Spawn", "MaxTotal", maxTotal);
 		f("Spawn", "Cooldown", cooldown);
