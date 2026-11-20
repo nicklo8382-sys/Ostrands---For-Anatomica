@@ -123,6 +123,53 @@ namespace OStrands
 		int   oralMaxPerPair{ 5 };
 		float oralMaxGap{ 6.0f };
 		float oralSpread{ 1.0f };
+		// 0.8.0.8: the mouth after an oral finish, and spit
+		float swallow{ 0.3f };       // share of an oral finish that is swallowed (the rest is held and dribbles out)
+		float dribble{ 0.5f };       // how fast the mouth lets it out of the corners (1 = as any opening; lower holds it longer)
+		float cough{ 0.08f };        // chance a second, while the mouth is very full, of a cough that pushes some out
+		float spit{ 1.0f };          // spit: how often drool strings and drips come from the mouth during oral (0 = none, 3 = sloppy)
+		bool  spitShaft{ true };     // the shaft drips spit during a blowjob
+		float droolTime{ 20.0f };    // seconds of drool strings from the lip corners after oral
+		bool  noseDrip{ false };     // a very full mouth can drip from the nose too
+		float facialChance{ 0.2f };  // 0.8.0.8: chance a finish in the mouth pulls out onto the face instead
+		bool  kissStrings{ true };   // 0.8.0.8: spit strings between the lips as a kiss parts
+		bool  snowball{ true };      // 0.8.0.8: a kiss passes cum held in one mouth to the other
+		bool  beastPeople{ true };   // 0.8.0.8: OStim Beast Form - werewolf / werebear / Vampire Lord forms count as people
+		bool  beastBigLoads{ true }; // 0.8.0.8: follow Beast Form's "Big loads" (a Colossal Load for werewolves and werebears)
+		bool  knotStrings{ true };   // 0.8.0.8: a knot pulling out - more, thicker strings and a gush
+		float beastMouth{ 1.7f };    // 0.8.0.8: beast forms' lip points are this much further apart (a muzzle)
+		bool  furCling{ true };      // 0.8.0.8: on beast forms semen clings in the fur (stickier, runs slower)
+		bool  knotHold{ true };      // 0.8.0.8: a knot holds it all in; pulling the knot out lets out a bigger gush
+		bool  tongueDrool{ true };   // 0.8.0.8: beast forms drip spit from the tongue tip when excited
+		bool  lordBigLoads{ true };  // 0.8.0.8: Vampire Lords get a Colossal Load of their own (Beast Form leaves them normal)
+		bool  lordDrool{ false };    // 0.8.0.8: Vampire Lords drool too (from the mouth - they have no tongue bones)
+		bool  lordBlood{ false };    // 0.8.0.8: a Vampire Lord's cum is blood-dark
+		std::array<float, 3> lordBloodColour{ 0.45f, 0.06f, 0.06f };
+		float lordBloodMix{ 0.5f };  //   ... how much of that colour (0 = his normal colour, 1 = all of it)
+		bool  lordCold{ true };      // 0.8.0.8: a Vampire Lord's cum is cold and thin: runs freer and stays wet longer
+		bool  lordHover{ true };     // 0.8.0.8: while he levitates, what runs down him drips straight off below the hips
+		bool  lordBats{ true };      // 0.8.0.8: turning into bats (his teleport) snaps the strands on him
+		bool  lordBloodDrool{ true };// 0.8.0.8: very excited, or casting Vampiric Drain, his drool comes out red
+		bool  lordFangs{ true };     // 0.8.0.8: spit strings hang from his fangs too
+		float lordSun{ 3.0f };       // 0.8.0.8: out in the sun it dries off a Vampire Lord this much faster (1 = off)
+		bool  stains{ true };        // 0.8.0.8: where a spurt lands outside the body it leaves a decal
+		bool  stainClothes{ true };  //   ... on someone's clothes / armour (dressed there)
+		bool  stainWorld{ true };    //   ... on walls, furniture and the floor
+		float stainSize{ 1.0f };     //   ... x its size
+		int   stainsPerSecond{ 6 };  //   ... at most this many a second
+		float stainArc{ 1.0f };      // 0.8.0.8: x how far a spurt flies for the stain trace (aim)
+		bool  weather{ true };       // 0.8.0.8: rain and water wash it off
+		float rainWash{ 3.0f };      //   ... x as fast in the rain
+		float waterWash{ 8.0f };     //   ... x as fast in water
+		bool  shelter{ true };       //   ... under a roof the rain does not reach it
+		float noseChance{ 0.1f };    // 0.8.0.8: chance a mouth finish comes out of the nose too
+		float noseDeep{ 0.25f };     //   ... added when the tip is deep in the throat
+		float noseAmount{ 1.0f };    //   ... x how much
+		// 0.8.0.8: precum in scenes, by OStim excitement
+		bool  precum{ true };        // the tip beads and drips more as he gets close
+		float precumFrom{ 55.0f };   // OStim excitement it starts at (0-100)
+		float precumRate{ 1.0f };    // how often (0.2-3)
+		bool  precumStrings{ true }; // clear strings when the tip touches and pulls away
 
 		bool  fingering{ true };
 		float fingerRadius{ 0.35f };

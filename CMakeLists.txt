@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(OStrands VERSION 0.8.0.7 LANGUAGES CXX)
+project(OStrands VERSION 0.8.0.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,6 +24,7 @@ add_commonlibsse_plugin(
 		src/main.cpp
 		src/AnatomicaBridge.cpp
 		src/Colossal.cpp
+		src/Stains.cpp
 		src/Anatomy.cpp
 		src/Arousal.cpp
 		src/AutoPairs.cpp

@@ -12,6 +12,8 @@
 
 namespace OStrands
 {
+	std::string TintTexturePath(const std::array<float, 3>& a_colour);   // 0.8.0.8: a flat-colour semen texture ("" = the default)
+
 	class FluidManager
 	{
 	public:
@@ -26,6 +28,9 @@ namespace OStrands
 		bool Inject(RE::ActorHandle a_host, std::uint32_t a_stream, RE::NiPoint3 a_point, RE::NiPoint3 a_velocity, int a_count,
 			std::optional<std::array<float, 3>> a_colour, std::optional<std::array<float, 4>> a_glow = std::nullopt);
 		static std::array<float, 4> GiverGlow(RE::Actor* a_giver, const std::array<float, 3>& a_colour);   // 0.8.0.7
+		void Held(RE::ActorHandle a_receiver, RE::ActorHandle a_giver, int a_opening, float a_particles);   // 0.8.0.8: into a reservoir (precum)
+		void Squeeze(RE::ActorHandle a_receiver, int a_opening);   // 0.8.0.8: a deep thrust into a full opening
+		void Snowball(RE::ActorHandle a_one, RE::ActorHandle a_other);   // 0.8.0.8: a kiss - the fuller mouth gives half
 
 		void Reset();
 		void Update(float a_delta);
@@ -48,7 +53,10 @@ namespace OStrands
 				kLoad,
 				kEnd,
 				kScene,
-				kInject
+				kInject,
+				kHeld,    // 0.8.0.8: a little goes into an opening without a finish (precum)
+				kSqueeze, // 0.8.0.8: a deep thrust into a full opening squeezes some out
+				kSnowball // 0.8.0.8: a kiss passes cum from one mouth to the other
 			};
 
 			Type              type{ Type::kClimax };
@@ -101,6 +109,8 @@ namespace OStrands
 			RE::NiPoint3        carried;
 			bool                hasNozzle{ false };
 			bool                inside{ false };
+			bool                facial{ false };     // 0.8.0.8: pulled out of the mouth: spurts onto the face
+			bool                noseRolled{ false }; // 0.8.0.8: the nose overflow was rolled for this finish
 			bool                creature{ false };   // 0.8.0.4: a Colossal Load
 			std::array<float, 3> colour{};
 			std::array<float, 4> glow{};   // 0.8.0.7

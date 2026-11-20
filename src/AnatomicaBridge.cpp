@@ -17,6 +17,9 @@ namespace OStrands::AnatomicaBridge
 		using CumGlowFn = bool (*)(RE::Actor*, float*);   // 0.8.0.7: rgb + strength
 		using TakesOverFn = bool (*)(RE::Actor*);
 		using SemenInFn = void (*)(RE::Actor*, RE::Actor*, float, const float*);
+		using SwallowFn = void (*)(RE::Actor*, RE::Actor*, float);   // 0.8.0.8: Anatomica 2.6j+ (a gulp)
+		using PrecumFn = void (*)(RE::Actor*, RE::Actor*, float);    // 0.8.0.8: Anatomica 2.6j+ (precum into him)
+		using FacialFn = void (*)(RE::Actor*, RE::Actor*, float);    // 0.8.0.8: Anatomica 2.6j+ (cum on the face)
 		using LoadKindFn = bool (*)(RE::Actor*, RE::Actor*, float*);
 
 		struct Api
@@ -27,6 +30,9 @@ namespace OStrands::AnatomicaBridge
 			CumGlowFn    cumGlow{ nullptr };
 			TakesOverFn  takesOver{ nullptr };
 			SemenInFn    semenIn{ nullptr };
+			SwallowFn    swallow{ nullptr };
+			PrecumFn     precum{ nullptr };
+			FacialFn     facial{ nullptr };
 			LoadKindFn   loadKind{ nullptr };
 		};
 
@@ -61,6 +67,9 @@ namespace OStrands::AnatomicaBridge
 		g_api.cumGlow = Find<CumGlowFn>(module, "Anatomica_CumGlow");
 		g_api.takesOver = Find<TakesOverFn>(module, "Anatomica_TakesOver");
 		g_api.semenIn = Find<SemenInFn>(module, "Anatomica_SemenIn");
+		g_api.swallow = Find<SwallowFn>(module, "Anatomica_Swallow");
+		g_api.precum = Find<PrecumFn>(module, "Anatomica_Precum");
+		g_api.facial = Find<FacialFn>(module, "Anatomica_Facial");
 		g_api.loadKind = Find<LoadKindFn>(module, "Anatomica_LoadKind");
 		g_api.version = version();
 		logger::info("Anatomica link v{}: hole {}, colour {}, hand over {}, Colossal Load {}", g_api.version, g_api.holeFrame != nullptr, g_api.cumColour != nullptr,
@@ -125,6 +134,29 @@ namespace OStrands::AnatomicaBridge
 		if (a_receiver && a_loads > 0.0f && Enabled() && g_api.semenIn) {
 			g_api.semenIn(a_receiver, a_giver, a_loads, a_colour.data());
 		}
+	}
+
+	void Swallow(RE::Actor* a_receiver, RE::Actor* a_giver, float a_loads)
+	{
+		if (a_receiver && a_loads > 0.0f && Enabled() && g_api.swallow) {
+			g_api.swallow(a_receiver, a_giver, a_loads);
+		}
+	}
+
+	void Facial(RE::Actor* a_receiver, RE::Actor* a_giver, float a_loads)
+	{
+		if (a_receiver && a_loads > 0.0f && Enabled() && g_api.facial) {
+			g_api.facial(a_receiver, a_giver, a_loads);
+		}
+	}
+
+	bool Precum(RE::Actor* a_receiver, RE::Actor* a_giver, float a_loads)
+	{
+		if (!a_receiver || a_loads <= 0.0f || !Enabled() || !g_api.precum || !TakesOver(a_receiver)) {
+			return false;
+		}
+		g_api.precum(a_receiver, a_giver, a_loads);
+		return true;
 	}
 
 	bool LoadKind(RE::Actor* a_giver, RE::Actor* a_receiver, Colossal::Kind& a_kind)

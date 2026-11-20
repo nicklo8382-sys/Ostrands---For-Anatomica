@@ -26,6 +26,12 @@ namespace OStrands::Colossal
 	};
 
 	bool         MncLoaded();
+	// 0.8.0.8: OStim Beast Form - werewolf / werebear / Vampire Lord forms (1 / 2 / 3, 0 = none), and whether its
+	// "Big loads" MCM option is on (read from its script, refreshed every few seconds)
+	int          BeastForm(RE::Actor* a_actor);
+	bool         BeastPerson(RE::Actor* a_actor);
+	bool         Levitating(RE::Actor* a_actor);   // 0.8.0.8: a Vampire Lord hovering (levitation, his spells out)   // a transformed person: counts as a person when [BeastForm] People is on
+	bool         BeastBigLoads();
 	Kind         Of(RE::Actor* a_giver, RE::Actor* a_receiver);
 	SemenProfile Profile(const Kind& a_kind);
 	float        StrandRadius(const Kind& a_kind);

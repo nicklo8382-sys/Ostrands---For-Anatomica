@@ -1,6 +1,7 @@
 #include "Anatomy.h"
 
 #include "AnatomicaBridge.h"
+#include "Colossal.h"
 #include "Settings.h"
 
 #include <unordered_map>
@@ -343,8 +344,25 @@ namespace OStrands
 			a_center += a_forward * (settings.mouthOut * head->world.scale) + up * settings.mouthUp;
 			const RE::NiTransform toHead = head->world.Invert();
 			a_points.clear();
-			for (const RE::NiPoint3& offset : { up * settings.lipHeight, up * -settings.lipHeight, right * settings.lipWidth, right * -settings.lipWidth }) {
+			float muzzle = 1.0f;   // 0.8.0.8: a beast form's mouth is wider
+			bool  fangs = false;   // 0.8.0.8: a Vampire Lord's fangs (points 4 and 5)
+			if (auto* ref = a_root->GetUserData(); ref && settings.beastPeople) {
+				if (auto* actor = ref->As<RE::Actor>()) {
+					const int form = Colossal::BeastForm(actor);
+					if (form != 0) {
+						muzzle = settings.beastMouth;
+					}
+					fangs = form == 3 && settings.lordFangs;
+				}
+			}
+			for (const RE::NiPoint3& offset : { up * (settings.lipHeight * std::sqrt(muzzle)), up * (-settings.lipHeight * std::sqrt(muzzle)), right * (settings.lipWidth * muzzle), right * (-settings.lipWidth * muzzle) }) {
 				a_points.push_back({ head, toHead * (a_center + offset) });
+			}
+			if (fangs) {   // just inside the corners, hanging a little below the upper lip
+				for (const float side : { 0.45f, -0.45f }) {
+					const RE::NiPoint3 fang = a_center + right * (settings.lipWidth * muzzle * side) + up * (settings.lipHeight * std::sqrt(muzzle) * 0.2f) + a_forward * (0.3f * head->world.scale);
+					a_points.push_back({ head, toHead * fang });
+				}
 			}
 			return true;
 		}

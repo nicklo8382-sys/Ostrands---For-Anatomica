@@ -3,6 +3,8 @@
 #include "Revealing.h"
 #include "Settings.h"
 #include "Colossal.h"
+#include "AnatomicaBridge.h"
+#include "FluidManager.h"
 
 namespace OStrands
 {
@@ -196,6 +198,8 @@ namespace OStrands
 		_pairs.clear();
 		_lingering.clear();
 		_aroused.clear();
+		_kisses.clear();
+		_tongues.clear();
 		for (auto& glint : _glints) {
 			RetireGlint(glint);
 		}
@@ -392,6 +396,7 @@ namespace OStrands
 		strand.frames = {};
 		strand.previousStep = 0.0f;
 		strand.serial = ++_serial;
+		strand.tint.clear();
 		if (strand.root) {
 			return &strand;
 		}
@@ -636,6 +641,274 @@ namespace OStrands
 		}
 	}
 
+	namespace
+	{
+		// 0.8.0.8: OStim's excitement (0-100) from its OStimExcitementFaction rank; -1 = not known
+		float Excitement(RE::Actor* a_actor)
+		{
+			static RE::TESFaction* faction = nullptr;
+			static bool            looked = false;
+			if (!looked) {
+				looked = true;
+				if (auto* dh = RE::TESDataHandler::GetSingleton()) {
+					faction = dh->LookupForm<RE::TESFaction>(0xD93, "OStim.esp");
+				}
+			}
+			if (!faction || !a_actor) {
+				return -1.0f;
+			}
+			const auto rank = a_actor->GetFactionRank(faction, a_actor->IsPlayerRef());
+			return rank < 0 ? -1.0f : static_cast<float>(rank);
+		}
+	}
+
+	void StrandManager::TickPrecum(PairState& a_state, float a_delta)
+	{
+		const auto& settings = Settings::Get();
+		if (!settings.precum || !IsPenis(a_state.pair.act) || a_state.anchors.toy) {
+			return;
+		}
+		const auto giver = a_state.pair.giver.get();
+		const float e = Excitement(giver.get());
+		if (e < settings.precumFrom) {
+			a_state.precumTimer = -1.0f;
+			return;
+		}
+		const float k = std::clamp((e - settings.precumFrom) / std::max(100.0f - settings.precumFrom, 1.0f), 0.0f, 1.0f);
+		const float interval = (4.0f - 3.3f * k) / std::max(settings.precumRate, 0.05f);
+		if (a_state.precumTimer < 0.0f) {
+			a_state.precumTimer = interval * std::uniform_real_distribution<float>(0.3f, 1.0f)(_rng);
+			return;
+		}
+		a_state.precumTimer -= a_delta;
+		if (a_state.precumTimer > 0.0f) {
+			return;
+		}
+		a_state.precumTimer = interval * std::uniform_real_distribution<float>(0.6f, 1.4f)(_rng);
+		const bool inside = a_state.anchors.Depth(a_state.anchors.tip) > 0.5f;
+		if (!inside) {
+			SpawnPrecum(a_state.pair, giver.get(), a_state.anchors.giverRoot, 0.55f + 0.5f * k);
+			return;
+		}
+		const auto  receiver = a_state.pair.receiver.get();
+		const Opening opening = OpeningOf(a_state.pair.act);
+		if (opening != Opening::kMouth && AnatomicaBridge::Precum(receiver.get(), giver.get(), 0.015f + 0.025f * k)) {
+			return;   // Anatomica takes it (he holds it, it wets him)
+		}
+		FluidManager::Get().Held(a_state.pair.receiver, a_state.pair.giver, static_cast<int>(opening), 2.0f + 3.0f * k);
+	}
+
+	void StrandManager::TickKissing(float a_delta)
+	{
+		const auto& settings = Settings::Get();
+		if (!settings.oral || (!settings.kissStrings && !settings.snowball)) {
+			_kisses.clear();
+			return;
+		}
+		static RE::TESFaction* faction = nullptr;
+		static bool            looked = false;
+		if (!looked) {
+			if (auto* dh = RE::TESDataHandler::GetSingleton()) {
+				looked = true;
+				faction = dh->LookupForm<RE::TESFaction>(0xE72, "OStim.esp");   // OStimKissingFaction
+				if (!faction) {
+					faction = dh->LookupForm<RE::TESFaction>(0xEC7, "OStim.esp");
+				}
+				logger::info("kissing: OStim kissing faction {}", faction ? "found" : "not found (no kissing strings)");
+			}
+		}
+		if (!faction) {
+			return;
+		}
+		auto mouth = [](RE::Actor* a_actor, std::vector<Point>& a_lips, RE::NiPoint3& a_center) {
+			auto* root = a_actor ? a_actor->Get3D(false) : nullptr;
+			RE::NiPoint3 forward;
+			return root && MouthSite(root, a_lips, a_center, forward) && a_lips.size() >= 4;
+		};
+		_kissPoll -= a_delta;
+		if (_kissPoll <= 0.0f) {   // who is kissing whom
+			_kissPoll = 0.3f;
+			std::vector<RE::Actor*> kissers;
+			auto consider = [&](RE::Actor* a_actor) {
+				if (a_actor && a_actor->Is3DLoaded() && a_actor->IsInFaction(faction)) {
+					kissers.push_back(a_actor);
+				}
+			};
+			consider(RE::PlayerCharacter::GetSingleton());
+			if (auto* lists = RE::ProcessLists::GetSingleton()) {
+				for (auto& handle : lists->highActorHandles) {
+					if (auto actor = handle.get()) {
+						consider(actor.get());
+					}
+				}
+			}
+			for (std::size_t i = 0; i < kissers.size(); ++i) {
+				std::vector<Point> li;
+				RE::NiPoint3       ci;
+				if (!mouth(kissers[i], li, ci)) {
+					continue;
+				}
+				RE::Actor* best = nullptr;
+				float      bestDistance = 14.0f;
+				for (std::size_t j = 0; j < kissers.size(); ++j) {
+					std::vector<Point> lj;
+					RE::NiPoint3       cj;
+					if (j == i || !mouth(kissers[j], lj, cj)) {
+						continue;
+					}
+					if (const float d = ci.GetDistance(cj); d < bestDistance) {
+						bestDistance = d;
+						best = kissers[j];
+					}
+				}
+				if (!best) {
+					continue;
+				}
+				const auto a = kissers[i]->GetHandle(), b = best->GetHandle();
+				const bool known = std::ranges::any_of(_kisses, [&](const Kiss& k) { return (k.a == a && k.b == b) || (k.a == b && k.b == a); });
+				if (!known) {
+					_kisses.push_back({ a, b });
+				}
+			}
+		}
+		std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+		for (auto it = _kisses.begin(); it != _kisses.end();) {
+			const auto a = it->a.get(), b = it->b.get();
+			std::vector<Point> la, lb;
+			RE::NiPoint3       ca, cb;
+			if (!a || !b || !mouth(a.get(), la, ca) || !mouth(b.get(), lb, cb)) {
+				it = _kisses.erase(it);
+				continue;
+			}
+			const bool kissing = a->IsInFaction(faction) || b->IsInFaction(faction);
+			it->gone = kissing ? 0.0f : it->gone + a_delta;
+			if (it->gone > 2.0f) {
+				it = _kisses.erase(it);
+				continue;
+			}
+			const float scale = a->Get3D(false)->world.scale;
+			const float d = ca.GetDistance(cb);
+			if (d < 3.2f * scale) {
+				it->close += a_delta;
+				it->lips = true;
+				if (settings.snowball && !it->passed && it->close > 1.0f) {
+					it->passed = true;
+					FluidManager::Get().Snowball(it->a, it->b);
+				}
+			} else if (it->lips && d > 4.2f * scale) {   // the kiss parts: strings between the lips
+				if (settings.kissStrings && it->close > 0.5f && EnsureMesh()) {
+					PairState state;
+					state.pair = Pair{ it->b, it->a, Act::kFellatio };
+					state.anchors.receiverRoot = a->Get3D(false);
+					const int count = std::clamp(1 + (unit(_rng) < 0.5f * std::max(settings.spit, 0.3f) ? 1 : 0), 1, 3);
+					for (int n = 0; n < count; ++n) {
+						Strand* strand = AcquireStrand();
+						if (!strand) {
+							break;
+						}
+						int ia = unit(_rng) < 0.6f ? 1 : static_cast<int>(unit(_rng) * 4.0f) % 4;   // mostly the lower lip
+						int ib = unit(_rng) < 0.6f ? 0 : static_cast<int>(unit(_rng) * 4.0f) % 4;
+						if (la.size() >= 6 && unit(_rng) < 0.4f) {   // 0.8.0.8: from a Vampire Lord's fangs
+							ia = 4 + static_cast<int>(unit(_rng) * 2.0f) % 2;
+						}
+						if (lb.size() >= 6 && unit(_rng) < 0.4f) {
+							ib = 4 + static_cast<int>(unit(_rng) * 2.0f) % 2;
+						}
+						StartBetween(*strand, Kind::kKiss, state, End{ RE::NiPointer<RE::NiAVObject>(la[ia].node), la[ia].local },
+							End{ RE::NiPointer<RE::NiAVObject>(lb[ib].node), lb[ib].local }, settings.StrandRadius(false) * (0.55f + 0.25f * unit(_rng)));
+						strand->creature = false;
+						++_statBridges;
+					}
+					if (settings.debugLog) {
+						logger::info("kissing: {} string(s) as the kiss parts", count);
+					}
+				}
+				it->lips = false;
+				it->close = 0.0f;
+				it->passed = false;
+			}
+			++it;
+		}
+	}
+
+	void StrandManager::TickTongues(float a_delta)
+	{
+		const auto& settings = Settings::Get();
+		if (!settings.tongueDrool || !settings.beastPeople) {
+			_tongues.clear();
+			return;
+		}
+		_tonguePoll -= a_delta;
+		if (_tonguePoll <= 0.0f) {   // beast forms nearby that are excited (OStim excitement 40+)
+			_tonguePoll = 1.0f;
+			auto consider = [&](RE::Actor* a_actor) {
+				const int form = a_actor && a_actor->Is3DLoaded() ? Colossal::BeastForm(a_actor) : 0;
+				if (form == 0 || (form == 3 && !settings.lordDrool) || Excitement(a_actor) < 40.0f) {
+					return;
+				}
+				const auto handle = a_actor->GetHandle();
+				auto it = std::ranges::find_if(_tongues, [&](const Tongue& t) { return t.actor == handle; });
+				if (it == _tongues.end()) {
+					_tongues.push_back({ handle, std::uniform_real_distribution<float>(1.0f, 4.0f)(_rng), 0.0f });
+				} else {
+					it->seen = 0.0f;
+				}
+			};
+			consider(RE::PlayerCharacter::GetSingleton());
+			if (auto* lists = RE::ProcessLists::GetSingleton()) {
+				for (auto& handle : lists->highActorHandles) {
+					if (auto actor = handle.get()) {
+						consider(actor.get());
+					}
+				}
+			}
+		}
+		for (auto it = _tongues.begin(); it != _tongues.end();) {
+			it->seen += a_delta;
+			const auto actor = it->actor.get();
+			auto*      root = actor ? actor->Get3D(false) : nullptr;
+			if (!root || it->seen > 6.0f) {   // calmed down (or gone): the last drips keep falling
+				it = _tongues.erase(it);
+				continue;
+			}
+			it->timer -= a_delta;
+			if (it->timer <= 0.0f) {
+				const float e = std::clamp((Excitement(actor.get()) - 40.0f) / 60.0f, 0.0f, 1.0f);
+				it->timer = (6.0f - 4.0f * e) * std::uniform_real_distribution<float>(0.7f, 1.3f)(_rng);
+				RE::NiAVObject* tip = nullptr;
+				for (const char* name : { "WWTongue 5", "WWTongue 4", "WWTongue 3" }) {
+					if ((tip = root->GetObjectByName(RE::BSFixedString(name)))) {
+						break;
+					}
+				}
+				// 0.8.0.8: a Vampire Lord very excited, or casting (Vampiric Drain): blood in it
+				std::string tint;
+				if (settings.lordBloodDrool && Colossal::BeastForm(actor.get()) == 3) {
+					auto* caster = actor->GetMagicCaster(RE::MagicSystem::CastingSource::kRightHand);
+					const bool casting = caster && caster->state.get() != RE::MagicCaster::State::kNone;
+					if (casting || Excitement(actor.get()) >= 80.0f) {
+						tint = TintTexturePath({ 0.55f, 0.04f, 0.04f });
+					}
+				}
+				if (tip && EnsureMesh()) {
+					SpawnDripAt(SelfPair(it->actor), Source::kGiver, root, { Point{ tip, {} } }, 0.7f, tint);
+				} else if (!tip && EnsureMesh()) {   // 0.8.0.8: no tongue bones (a Vampire Lord, a werebear): from the lower lip
+					std::vector<Point> lips;
+					RE::NiPoint3       center, forward;
+					if (Anatomy::MouthSite(root, lips, center, forward) && lips.size() > 1) {
+						std::vector<Point> from{ lips[1] };
+						if (lips.size() >= 6) {   // and the fangs
+							from.push_back(lips[4]);
+							from.push_back(lips[5]);
+						}
+						SpawnDripAt(SelfPair(it->actor), Source::kGiver, root, { from[static_cast<std::size_t>(std::uniform_int_distribution<int>(0, static_cast<int>(from.size()) - 1)(_rng))] }, 0.7f, tint);
+					}
+				}
+			}
+			++it;
+		}
+	}
+
 	void StrandManager::TrackStroke(PairState& a_state, float a_delta)
 	{
 		const auto& settings = Settings::Get();
@@ -644,13 +917,44 @@ namespace OStrands
 		a_state.cooldown -= a_delta;
 		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * a_delta, kMaxBudget);
 
+		// 0.8.0.8: precum strings - the tip touches the opening / lips and pulls away again without going in
+		if (!anchors.toy && settings.precumStrings) {
+			const float near = anchors.tip.GetDistance(anchors.center);
+			if (depth > 0.5f) {
+				a_state.touched = false;
+			} else if (near < 2.2f && !a_state.wasIn) {
+				a_state.touched = true;
+			} else if (a_state.touched && near > 3.8f) {
+				a_state.touched = false;
+				if (Excitement(a_state.pair.giver.get().get()) >= 20.0f && std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.6f) {
+					SpawnPullStrings(a_state, 1 + (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.4f ? 1 : 0), 0.6f);
+				}
+			}
+		}
 		// 0.8.0.7: the tip slides right out - strings stretch between the rim and the tip, thin and snap
 		if (!anchors.toy) {
 			if (depth > 0.5f) {
 				a_state.wasIn = true;
 			} else if (depth < -0.5f) {
 				if (a_state.wasIn && settings.pullStrings > 0 && a_state.settle <= 0.0f && anchors.tip.GetDistance(anchors.center) < 12.0f) {
-					SpawnPullStrings(a_state);
+					// 0.8.0.8: a knot (OStim Beast Form / TWO werewolf knot bones) pops out: more, thicker strings and a gush
+					auto* giver3D = anchors.giverRoot;
+					const bool knot = settings.knotStrings && giver3D &&
+					                  (giver3D->GetObjectByName(RE::BSFixedString("WWLK 1")) || giver3D->GetObjectByName(RE::BSFixedString("WWRK 1")));
+					if (knot) {
+						SpawnPullStrings(a_state, settings.pullStrings + 2, 1.6f);
+						const auto receiver = a_state.pair.receiver.get();
+						const Opening opening = OpeningOf(a_state.pair.act);
+						if (opening == Opening::kMouth || !AnatomicaBridge::TakesOver(receiver.get())) {
+							FluidManager::Get().Squeeze(a_state.pair.receiver, static_cast<int>(opening));
+							FluidManager::Get().Squeeze(a_state.pair.receiver, static_cast<int>(opening));
+						}
+						if (settings.debugLog) {
+							logger::info("knot pulled out: thicker strings and a gush");
+						}
+					} else {
+						SpawnPullStrings(a_state);
+					}
 				}
 				a_state.wasIn = false;
 			}
@@ -659,6 +963,11 @@ namespace OStrands
 		_statStroke = std::max(_statStroke, a_state.stroke.Range());
 		if (crossing == Crossing::kArrived) {
 			a_state.bridgePending = false;
+			// 0.8.0.8: a deep thrust into a full opening squeezes some out (Anatomica does its own men's)
+			const auto receiver = a_state.pair.receiver.get();
+			if (!(OpeningOf(a_state.pair.act) != Opening::kMouth && AnatomicaBridge::TakesOver(receiver.get()))) {
+				FluidManager::Get().Squeeze(a_state.pair.receiver, static_cast<int>(OpeningOf(a_state.pair.act)));
+			}
 		} else if (crossing == Crossing::kLeft) {
 			a_state.bridgePending = true;
 		}
@@ -723,10 +1032,18 @@ namespace OStrands
 		if (!settings.drips) {
 			return;
 		}
-		std::exponential_distribution<float> next(1.0f / settings.dripInterval);
+		const Act     act = a_state.pair.act;
+		const Opening opening = OpeningOf(act);
+		// 0.8.0.8: Spit - the mouth drools more (or less, or not at all) than other openings drip
+		const float spit = opening == Opening::kMouth ? settings.spit : 1.0f;
+		if (spit <= 0.0f && opening == Opening::kMouth && !(act == Act::kFellatio && settings.spitShaft)) {
+			return;
+		}
+		const float interval = settings.dripInterval / std::max(spit, 0.05f);
+		std::exponential_distribution<float> next(1.0f / interval);
 		auto tick = [&](float& a_timer, Source a_source) {
 			if (a_timer < 0.0f) {
-				a_timer = std::uniform_real_distribution<float>(0.3f, settings.dripInterval)(_rng);
+				a_timer = std::uniform_real_distribution<float>(0.3f, interval)(_rng);
 				return;
 			}
 			a_timer -= a_delta;
@@ -735,8 +1052,13 @@ namespace OStrands
 				a_timer = std::max(next(_rng), 0.4f);
 			}
 		};
-		const Act     act = a_state.pair.act;
-		const Opening opening = OpeningOf(act);
+		if (act == Act::kFellatio && settings.spitShaft && settings.spit > 0.0f) {   // 0.8.0.8: spit drips off the shaft
+			a_state.shaftSpit -= a_delta;
+			if (a_state.shaftSpit <= 0.0f) {
+				SpawnShaftSpit(a_state);
+				a_state.shaftSpit = std::max(std::exponential_distribution<float>(settings.spit / settings.dripInterval)(_rng), 0.5f);
+			}
+		}
 		const bool    receiverDrips = opening == Opening::kMouth ? settings.oralDrips : !a_state.anchors.vulva.empty();
 		const bool    giverDrips = act == Act::kTribbing || (IsOralGiver(act) && settings.oralDrips) ||
 		                        (act == Act::kVaginalFingering && settings.fingerDrips) ||
@@ -861,7 +1183,7 @@ namespace OStrands
 		return true;
 	}
 
-	void StrandManager::SpawnPullStrings(PairState& a_state)
+	void StrandManager::SpawnPullStrings(PairState& a_state, int a_count, float a_radius)
 	{
 		const auto& settings = Settings::Get();
 		const auto& anchors = a_state.anchors;
@@ -870,7 +1192,7 @@ namespace OStrands
 		}
 		RE::NiAVObject* bone = anchors.chain.back();
 		std::uniform_int_distribution<int> extra(0, 1);
-		int count = std::min(settings.pullStrings + extra(_rng), settings.maxPerPair - Count(a_state.pair, Kind::kBridge));
+		int count = std::min(a_count >= 0 ? a_count : settings.pullStrings + extra(_rng), settings.maxPerPair - Count(a_state.pair, Kind::kBridge));
 		std::vector<Point> rims = anchors.opening;
 		std::ranges::shuffle(rims, _rng);
 		std::uniform_real_distribution<float> spread(-0.35f, 0.35f);
@@ -884,7 +1206,7 @@ namespace OStrands
 			}
 			const RE::NiPoint3 at = anchors.tip + side * spread(_rng) + up * spread(_rng);   // round the tip, not all from one point
 			StartBetween(*strand, Kind::kBridge, a_state, End{ RE::NiPointer<RE::NiAVObject>(rims[n].node), rims[n].local },
-				End{ RE::NiPointer<RE::NiAVObject>(bone), bone->world.Invert() * at }, radius * 1.15f);
+				End{ RE::NiPointer<RE::NiAVObject>(bone), bone->world.Invert() * at }, radius * a_radius);
 			++_statBridges;
 		}
 		if (settings.debugLog) {
@@ -992,10 +1314,40 @@ namespace OStrands
 		const auto& points = a_source == Source::kGiver                  ? anchors.giverSite :
 		                     OpeningOf(a_state.pair.act) == Opening::kMouth ? anchors.opening :
 		                                                                      anchors.vulva;
+		if (a_source == Source::kReceiver && OpeningOf(a_state.pair.act) == Opening::kMouth && points.size() >= 4) {
+			// 0.8.0.8: drool hangs from the corners of the mouth (the lip points are top, bottom, then the two corners)
+			SpawnDripAt(a_state.pair, a_source, anchors.receiverRoot, { points[2], points[3] });
+			return;
+		}
 		SpawnDripAt(a_state.pair, a_source, a_source == Source::kGiver ? anchors.giverRoot : anchors.receiverRoot, points);
 	}
 
-	void StrandManager::SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale)
+	void StrandManager::SpawnShaftSpit(PairState& a_state)
+	{
+		// 0.8.0.8: a drip of spit from the underside of the shaft, just outside the lips
+		const auto& anchors = a_state.anchors;
+		if (anchors.chain.empty()) {
+			return;
+		}
+		RE::NiAVObject* best = nullptr;
+		float           bestDepth = -1e9f;
+		for (auto* node : anchors.chain) {
+			const float d = anchors.Depth(node->world.translate);
+			if (d <= 0.0f && d > bestDepth) {
+				bestDepth = d;
+				best = node;
+			}
+		}
+		if (!best || bestDepth < -6.0f) {
+			return;
+		}
+		const float        radius = a_state.shaftRadius > 0.0f ? a_state.shaftRadius : 1.0f;
+		const RE::NiPoint3 under = best->world.translate + RE::NiPoint3{ 0.0f, 0.0f, -radius * 0.9f };
+		SpawnDripAt(a_state.pair, Source::kGiver, anchors.giverRoot ? anchors.giverRoot : best, { Point{ best, best->world.Invert() * under } }, 0.8f);
+	}
+
+	void StrandManager::SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale,
+		const std::string& a_tint)
 	{
 		const auto& settings = Settings::Get();
 		if (a_points.empty() || !a_root || Count(a_pair, Kind::kDrip, a_source) >= settings.dripMaxPerSource) {
@@ -1026,6 +1378,7 @@ namespace OStrands
 		strand->fade = 1.0f;
 		strand->fadeRate = 0.0f;
 		strand->breakAt = -1;
+		strand->tint = a_tint;
 		Attach(*strand, a_root);
 		++_statDrips;
 	}
@@ -1052,6 +1405,12 @@ namespace OStrands
 		if (OpeningOf(act) != Opening::kMouth && !a_state.anchors.vulva.empty()) {
 			add(Source::kReceiver, a_state.pair.receiver, a_state.receiverDrip);
 		}
+		if (OpeningOf(act) == Opening::kMouth && settings.droolTime > 0.0f && settings.spit > 0.0f &&
+			!std::ranges::any_of(_lingering, [&](const Linger& a_linger) { return a_linger.actor == a_state.pair.receiver; })) {
+			// 0.8.0.8: drool strings keep coming from the corners of the mouth for a while
+			_lingering.push_back({ a_state.pair, Source::kReceiver, a_state.pair.receiver, settings.droolTime,
+				std::uniform_real_distribution<float>(0.3f, 1.5f)(_rng), true });
+		}
 		const bool giverVulva = act == Act::kTribbing || (IsPenis(act) && a_state.strapWearer && settings.wearerDrips);
 		if (giverVulva && !a_state.anchors.giverSite.empty()) {
 			add(Source::kGiver, a_state.pair.giver, a_state.giverDrip);
@@ -1069,11 +1428,27 @@ namespace OStrands
 			}
 			const auto actor = a_linger.actor.get();
 			auto*      root = actor ? actor->Get3D(false) : nullptr;
-			if (!root || !Revealing::Exposed(actor.get())) {
+			if (!root || (!a_linger.mouth && !Revealing::Exposed(actor.get()))) {
 				return true;
 			}
 			a_linger.timer -= a_delta;
 			if (a_linger.timer > 0.0f) {
+				return false;
+			}
+			if (a_linger.mouth) {   // 0.8.0.8
+				std::vector<Point> lips;
+				RE::NiPoint3       center, forward;
+				if (!MouthSite(root, lips, center, forward) || lips.size() < 4) {
+					return true;
+				}
+				std::vector<Point> corners{ lips[2], lips[3] };
+				if (lips.size() >= 6) {   // 0.8.0.8: a Vampire Lord's fangs
+					corners.push_back(lips[4]);
+					corners.push_back(lips[5]);
+				}
+				SpawnDripAt(a_linger.pair, a_linger.source, root, corners, 0.85f);
+				const float left = std::max(a_linger.remaining / std::max(settings.droolTime, 0.01f), 0.2f);
+				a_linger.timer = std::max(std::exponential_distribution<float>(left * std::max(settings.spit, 0.1f) / settings.dripInterval)(_rng), 0.5f);
 				return false;
 			}
 			std::vector<Point> vulva;
@@ -1334,8 +1709,100 @@ namespace OStrands
 			a_strand.shine = settings.shine;
 			a_strand.gloss = settings.gloss;
 		}
+		if (a_strand.tint != a_strand.tintApplied) {
+			Retexture(a_strand);
+		}
 		RE::NiUpdateData update{};
 		a_strand.root->Update(update);
+	}
+
+	void StrandManager::Retexture(Strand& a_strand)
+	{
+		a_strand.tintApplied = a_strand.tint;
+		auto* shape = a_strand.root ? a_strand.root->GetObjectByName(MeshNames::Get().strandShape) : nullptr;
+		auto* geometry = shape ? shape->AsGeometry() : nullptr;
+		auto* shader = a_strand.shader ? netimmerse_cast<RE::BSLightingShaderProperty*>(a_strand.shader.get()) : nullptr;
+		auto* material = shader ? static_cast<RE::BSLightingShaderMaterialBase*>(shader->material) : nullptr;
+		if (!geometry || !material) {
+			return;
+		}
+		if (a_strand.baseDiffuse.empty()) {
+			const char* path = material->textureSet ? material->textureSet->GetTexturePath(RE::BSTextureSet::Texture::kDiffuse) : nullptr;
+			a_strand.baseDiffuse = path && *path ? path : "textures\\OStrands\\semen.dds";
+		}
+		const std::string& want = a_strand.tint.empty() ? a_strand.baseDiffuse : a_strand.tint;
+		auto* copy = static_cast<RE::BSLightingShaderMaterialBase*>(material->Create());
+		if (!copy) {
+			return;
+		}
+		copy->CopyMembers(material);
+		if (auto* textures = RE::BSShaderTextureSet::Create()) {
+			for (std::uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; ++i) {
+				const auto  slot = static_cast<RE::BSTextureSet::Texture>(i);
+				const char* path = material->textureSet ? material->textureSet->GetTexturePath(slot) : nullptr;
+				if (path && *path) {
+					textures->SetTexturePath(slot, path);
+				}
+			}
+			textures->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, want.c_str());
+			copy->ClearTextures();
+			copy->OnLoadTextureSet(0, textures);
+		}
+		shader->SetMaterial(copy, true);
+		shader->SetupGeometry(geometry);
+		shader->FinishSetupGeometry(geometry);
+		copy->~BSLightingShaderMaterialBase();
+		RE::free(copy);
+		a_strand.opacity = -1.0f;   // set again on the new material
+		a_strand.shine = -1.0f;
+	}
+
+	void StrandManager::TickBats(float a_delta)
+	{
+		(void)a_delta;
+		const auto& settings = Settings::Get();
+		if (!settings.lordBats) {
+			_lordAt.clear();
+			return;
+		}
+		std::unordered_map<std::uint32_t, RE::NiPoint3> now;
+		std::vector<RE::ActorHandle>                    burst;
+		auto look = [&](const RE::ActorHandle& a_handle) {
+			const auto key = a_handle.native_handle();
+			if (now.contains(key)) {
+				return;
+			}
+			const auto actor = a_handle.get();
+			if (!actor || Colossal::BeastForm(actor.get()) != 3) {
+				return;
+			}
+			const auto at = actor->GetPosition();
+			now[key] = at;
+			if (auto it = _lordAt.find(key); it != _lordAt.end() && it->second.GetDistance(at) > 250.0f) {
+				burst.push_back(a_handle);   // gone somewhere else in an instant: bats
+			}
+		};
+		for (const auto& strand : _strands) {
+			if (strand.active && strand.breakAt < 0) {
+				look(strand.pair.giver);
+				look(strand.pair.receiver);
+			}
+		}
+		_lordAt = std::move(now);
+		for (const auto& handle : burst) {
+			int snapped = 0;
+			for (auto& strand : _strands) {
+				if (strand.active && strand.breakAt < 0 && (strand.pair.giver == handle || strand.pair.receiver == handle)) {
+					Snap(strand, static_cast<int>(kBones) / 2, 0.15f);
+					++snapped;
+				}
+			}
+			if (settings.debugLog && snapped > 0) {
+				if (const auto actor = handle.get()) {
+					logger::info("{} bursts into bats: {} strand(s) snap", actor->GetDisplayFullName(), snapped);
+				}
+			}
+		}
 	}
 
 	void StrandManager::Retire(Strand& a_strand)
@@ -1373,7 +1840,10 @@ namespace OStrands
 		ApplyPendingPairs();
 		const bool anyActive = std::ranges::any_of(_strands, [](const Strand& s) { return s.active; }) ||
 		                       std::ranges::any_of(_glints, [](const Glint& g) { return g.active; });
-		if (_pairs.empty() && _lingering.empty() && _aroused.empty() && !anyActive) {
+		TickKissing(a_delta);   // 0.8.0.8 (OStim's kissing is not a pair of ours)
+		TickTongues(a_delta);   // 0.8.0.8
+		TickBats(a_delta);      // 0.8.0.8
+		if (_pairs.empty() && _lingering.empty() && _aroused.empty() && _kisses.empty() && _tongues.empty() && !anyActive) {
 			return;
 		}
 		if (!EnsureMesh()) {
@@ -1424,6 +1894,7 @@ namespace OStrands
 				TrackSurface(state, a_delta, fingers);
 			}
 			TickDrips(state, a_delta);
+			TickPrecum(state, a_delta);   // 0.8.0.8
 		}
 		TickLinger(a_delta);
 		TickAroused(a_delta);
@@ -1445,9 +1916,14 @@ namespace OStrands
 					return a_linger.pair == strand.pair && a_linger.source == strand.source;
 				});
 				const bool aroused = strand.pair == SelfPair(strand.owner) &&
-				                     std::ranges::any_of(_aroused, [&](const Excited& a_entry) { return a_entry.who.actor == strand.owner; });
+				                     (std::ranges::any_of(_aroused, [&](const Excited& a_entry) { return a_entry.who.actor == strand.owner; }) ||
+				                      std::ranges::any_of(_tongues, [&](const Tongue& a_tongue) { return a_tongue.actor == strand.owner; }));   // 0.8.0.8: tongue drool
 				if (pair == _pairs.end() && !lingering && !aroused) {
 					Snap(strand, 1, settings.dripFadeTime);
+				}
+			} else if (strand.kind == Kind::kKiss) {   // 0.8.0.8: stretches, then breaks
+				if (strand.age > 6.0f || strand.top.World().GetDistance(strand.bottom.World()) > strand.startLength + 7.0f * strand.attachedTo->world.scale) {
+					Snap(strand, middle, 0.6f);
 				}
 			} else if (pair == _pairs.end()) {
 				Snap(strand, middle, 0.15f);

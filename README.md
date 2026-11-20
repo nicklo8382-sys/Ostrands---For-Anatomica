@@ -2,7 +2,7 @@
 
 OStrands is an SKSE plugin for Skyrim SE/AE. It draws procedural strands, drips and semen in OStim and SexLab scenes.
 
-This is a modified build of [OStrands by LeonVanWinkle (Saint)](https://gitlab.com/LilRicefield/ostrands), with contributions from crajjjj, based on [Keevan2374's fork](https://gitlab.com/Keevan2374/ostrands). It links OStrands to [Anatomica - Anatomical Anus for HIMBO](#anatomica-link) and adds a few settings of its own. The current version is **0.8.0.7**, based on upstream OStrands 0.8.0.
+This is a modified build of [OStrands by LeonVanWinkle (Saint)](https://gitlab.com/LilRicefield/ostrands), with contributions from crajjjj, based on [Keevan2374's fork](https://gitlab.com/Keevan2374/ostrands). It links OStrands to [Anatomica - Anatomical Anus for HIMBO](#anatomica-link) and adds a few settings of its own. The current version is **0.8.0.8**, based on upstream OStrands 0.8.0.
 
 All credit for OStrands itself goes to its original authors - see [Credits](#credits).
 
@@ -97,9 +97,23 @@ How big a Colossal Load is, and who gets one, is set in Anatomica's menu (Integr
 
 ### Versions
 
-Versions follow upstream OStrands with one extra number: `upstream.version.revision`. `0.8.0.7` is based on upstream 0.8.0.
+Versions follow upstream OStrands with one extra number: `upstream.version.revision`. `0.8.0.8` is based on upstream 0.8.0.
 
 ### Changelog
+
+**0.8.0.8**
+- Fixed: semen that does not glow was drawn dark and flat (0.8.0.7 turned its own shading off every frame). The glow is now set up once, only on semen that glows.
+- The mouth after an oral finish: some is swallowed (`[Oral] Swallow`), the rest is held and dribbles slowly out of the corners of the mouth and down the chin (`Dribble`); a very full mouth can cough some out (`Cough`) or drip from the nose (`NoseDrip`, off by default). Clothes no longer stop a mouth from dripping.
+- Spit: drool strings hang from the corners of the mouth during oral (`[Oral] Spit`, 0-3), the shaft drips spit during a blowjob (`SpitShaft`), and drool keeps coming for a while after (`DroolTime`). Strands page, "Mouth and spit".
+- Swallowing tells Anatomica 2.6j+ (it plays a gulp).
+- Facials: a finish during a blowjob can pull out and land on the face instead (`[Oral] FacialChance`, 0.2). With Anatomica 2.6j+ it stays on his face until washed.
+- Kissing: strings of spit between the lips as a kiss parts (`[Oral] KissStrings`), and a kiss passes cum held in one mouth into the other (`Snowball`).
+- OStim Beast Form: werewolf, werebear and Vampire Lord forms count as people, so they always get semen and strands (`[BeastForm] People`); while Beast Form's "Big loads" is on, werewolves and werebears get a Colossal Load (`BigLoads`); a knot pulling out leaves more, thicker strings and pushes some out (`KnotStrings`). Beast mouths are wider (`Mouth`), semen clings in their fur (`FurCling`), a knot holds it all in until it pulls out (`KnotHold`), and werewolf forms drip spit from the tongue when excited (`TongueDrool`). Vampire Lords get a Colossal Load of their own (`VampireLordBigLoads`) and can drool from the mouth too (`VampireLordDrool`, off by default). Vampire Lords can also have blood-dark cum (`VampireLordBlood`, off by default), cold thin cum that stays wet longer (`VampireLordCold`), drips that fall straight off while they hover (`VampireLordHover`), strands that snap when they burst into bats (`VampireLordBats`), red drool when very excited or casting (`VampireLordBloodDrool`), spit strings from their fangs (`VampireLordFangs`), and it dries off them faster in the sun (`VampireLordSun`). This works for every werewolf, werebear and Vampire Lord, not only a transformed player.
+- A full opening overflows: a deep thrust squeezes a little out round the shaft, and going in again pushes out more (Anatomica handles its own men).
+- Stains and splashes (`[Stains]`): each spurt's flight is traced; where it lands on someone's clothes or armour it leaves a stain, and on walls, furniture and floors a splash (the game's own decals, like blood). Size, reach and how many a second can be set.
+- Rain and water (`[Weather]`): out in the rain it washes off faster, standing in water faster still; a roof keeps the rain off.
+- Out of the nose: a finish in the mouth can come out of the nose too (`[Oral] NoseChance`, more when deep in the throat, `NoseDeep`, and `NoseAmount`).
+- Precum in scenes (`[Precum]`): as he gets close (OStim excitement) the tip beads and drips more and more; inside someone it goes into them (with Anatomica it wets him and adds to what he holds; in a mouth it is held there). Clear precum strings when the tip touches and pulls away without going in.
 
 **0.8.0.7**
 - Strings on pull-out: as the tip slides right out, strings stretch between the rim and the tip, thin and snap (`[Spawn] PullStrings`, 0 = off; Strands page).

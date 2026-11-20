@@ -1,5 +1,6 @@
 #include "OStimBridge.h"
 
+#include "Colossal.h"
 #include "FluidManager.h"
 #include "Settings.h"
 #include "StrandManager.h"
@@ -152,7 +153,8 @@ namespace OStrands::OStimBridge
 			if (!target) {
 				target = actor;
 			}
-			if (!Settings::Get().creatures && (!Anatomy::IsPerson(actor) || !Anatomy::IsPerson(target))) {
+			auto person = [](RE::Actor* a) { return Anatomy::IsPerson(a) || Colossal::BeastPerson(a); };   // 0.8.0.8: beast forms
+			if (!Settings::Get().creatures && (!person(actor) || !person(target))) {
 				return std::nullopt;
 			}
 			if (*act == Act::kFellatio) {
@@ -181,7 +183,7 @@ namespace OStrands::OStimBridge
 			std::vector<RE::ActorHandle> result;
 			for (std::uint32_t i = 0; i < thread->getActorCount(); ++i) {
 				auto* actor = ActorAt(thread, static_cast<std::int32_t>(i));
-				if (actor && (Settings::Get().creatures || Anatomy::IsPerson(actor))) {
+				if (actor && (Settings::Get().creatures || Anatomy::IsPerson(actor) || Colossal::BeastPerson(actor))) {
 					result.push_back(actor->GetHandle());
 				}
 			}

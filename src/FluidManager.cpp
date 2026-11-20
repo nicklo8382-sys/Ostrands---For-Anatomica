@@ -3,6 +3,8 @@
 #include "AnatomicaBridge.h"
 #include "Body.h"
 #include "Colossal.h"
+#include "Stains.h"
+#include "Anatomy.h"
 #include "Revealing.h"
 #include "Settings.h"
 #include "SexLabBridge.h"
@@ -363,6 +365,44 @@ namespace OStrands
 		return colour;
 	}
 
+	void FluidManager::Snowball(RE::ActorHandle a_one, RE::ActorHandle a_other)
+	{
+		std::scoped_lock guard(_lock);
+		if (_pending.size() > 4096) {
+			return;
+		}
+		Event event{ Event::Type::kSnowball, 0, a_one };
+		event.actors.push_back(a_other);
+		_pending.push_back(std::move(event));
+	}
+
+	void FluidManager::Squeeze(RE::ActorHandle a_receiver, int a_opening)
+	{
+		std::scoped_lock guard(_lock);
+		if (_pending.size() > 4096) {
+			return;
+		}
+		Event event{ Event::Type::kSqueeze, 0, a_receiver };
+		event.stream = static_cast<std::uint32_t>(a_opening);
+		_pending.push_back(std::move(event));
+	}
+
+	void FluidManager::Held(RE::ActorHandle a_receiver, RE::ActorHandle a_giver, int a_opening, float a_particles)
+	{
+		if (a_particles <= 0.0f || !Settings::Get().enabled) {
+			return;
+		}
+		std::scoped_lock guard(_lock);
+		if (_pending.size() > 4096) {
+			return;
+		}
+		Event event{ Event::Type::kHeld, 0, a_receiver };
+		event.stream = static_cast<std::uint32_t>(a_opening);
+		event.value = a_particles;
+		event.actors = { a_giver };
+		_pending.push_back(std::move(event));
+	}
+
 	std::array<float, 4> FluidManager::GiverGlow(RE::Actor* a_giver, const std::array<float, 3>& a_colour)
 	{
 		std::array<float, 4> glow{};
@@ -401,7 +441,9 @@ namespace OStrands
 
 	void FluidManager::Tint(Domain& a_domain, RE::NiAVObject* a_root, std::string& a_applied)
 	{
-		if (a_domain.diagnostic || a_applied == a_domain.tint) {
+		const bool        glow = a_domain.glow[3] > 0.0f;   // 0.8.0.7
+		const std::string key = glow ? a_domain.tint + "|glow" : a_domain.tint;
+		if (a_domain.diagnostic || a_applied == key) {
 			return;
 		}
 		const auto& names = MeshNames::Get();
@@ -433,12 +475,15 @@ namespace OStrands
 				copy->OnLoadTextureSet(0, textures);
 			}
 			shader->SetMaterial(copy, true);
+			if (glow) {
+				shader->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, true);   // before the setup below, so the shader is built with it
+			}
 			shader->SetupGeometry(geometry);
 			shader->FinishSetupGeometry(geometry);
 			copy->~BSLightingShaderMaterialBase();
 			RE::free(copy);
 		}
-		a_applied = a_domain.tint;
+		a_applied = key;
 		Shade(a_domain, a_root);
 	}
 
@@ -546,6 +591,73 @@ namespace OStrands
 		case Event::Type::kInject:
 			InjectNow(a_event);
 			break;
+		case Event::Type::kSnowball: {   // 0.8.0.8: the fuller mouth gives half to the other
+			if (a_event.actors.empty()) {
+				break;
+			}
+			const RE::ActorHandle one = a_event.actor, other = a_event.actors.front();
+			auto mouthOf = [&](RE::ActorHandle h) { return std::ranges::find_if(_reservoirs, [&](const Reservoir& r) { return r.actor == h && r.opening == Opening::kMouth; }); };
+			auto a = mouthOf(one), b = mouthOf(other);
+			const float va = a != _reservoirs.end() ? a->volume : 0.0f, vb = b != _reservoirs.end() ? b->volume : 0.0f;
+			if (std::max(va, vb) < 3.0f) {
+				break;
+			}
+			const RE::ActorHandle to = va >= vb ? other : one, from = va >= vb ? one : other;
+			auto src = va >= vb ? a : b;
+			const float give = src->volume * 0.5f;
+			src->volume -= give;
+			auto dst = mouthOf(to);
+			if (dst == _reservoirs.end()) {
+				Reservoir reservoir;
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				reservoir.id = ++_nextEmitter;
+				reservoir.actor = to;
+				reservoir.phase = unit(_rng) * 2.0f * std::numbers::pi_v<float>;
+				reservoir.period = 1.4f + unit(_rng);
+				reservoir.opening = Opening::kMouth;
+				reservoir.hosts = { to, from };
+				_reservoirs.push_back(std::move(reservoir));
+				dst = std::prev(_reservoirs.end());
+			}
+			dst->volume += give;
+			dst->age = 0.0f;
+			if (Settings::Get().debugLog) {
+				logger::info("snowball: {:.0f} passed from one mouth to the other", give);
+			}
+			break;
+		}
+		case Event::Type::kSqueeze: {   // 0.8.0.8: some of what it holds is squeezed out round the shaft
+			const auto opening = static_cast<Opening>(a_event.stream);
+			auto it = std::ranges::find_if(_reservoirs, [&](const Reservoir& r) { return r.actor == a_event.actor && r.opening == opening; });
+			if (it != _reservoirs.end() && it->volume >= 8.0f) {
+				const float out = it->volume * (opening == Opening::kMouth ? 0.06f : 0.04f);
+				it->gush += out;
+				it->volume -= out;
+			}
+			break;
+		}
+		case Event::Type::kHeld: {   // 0.8.0.8
+			const auto opening = static_cast<Opening>(a_event.stream);
+			auto it = std::ranges::find_if(_reservoirs, [&](const Reservoir& r) { return r.actor == a_event.actor && r.opening == opening; });
+			if (it == _reservoirs.end()) {
+				Reservoir reservoir;
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				reservoir.id = ++_nextEmitter;
+				reservoir.actor = a_event.actor;
+				reservoir.phase = unit(_rng) * 2.0f * std::numbers::pi_v<float>;
+				reservoir.period = 1.4f + unit(_rng);
+				reservoir.opening = opening;
+				if (!a_event.actors.empty()) {
+					reservoir.plug = a_event.actors.front();
+					reservoir.hosts = a_event.actors;
+				}
+				_reservoirs.push_back(std::move(reservoir));
+				it = std::prev(_reservoirs.end());
+			}
+			it->volume += a_event.value;
+			it->age = 0.0f;
+			break;
+		}
 		case Event::Type::kEnd:
 			_scenes.erase(a_event.thread);
 			std::erase_if(_emitters, [&](Emitter& a_emitter) {
@@ -607,7 +719,7 @@ namespace OStrands
 		}
 		const auto actor = a_event.actor.get();
 		auto*      root = actor ? actor->Get3D(false) : nullptr;
-		if (!root || (!settings.creatures && !IsPerson(actor.get()))) {
+		if (!root || (!settings.creatures && !IsPerson(actor.get()) && !Colossal::BeastPerson(actor.get()))) {
 			return;
 		}
 		const auto shaft = GetShaftState(actor.get());
@@ -650,10 +762,25 @@ namespace OStrands
 			emitter.profile.stretch = std::clamp(emitter.profile.stretch * 1.8f, Settings::kStretchMin, Settings::kStretchMax);
 			emitter.size *= 1.15f;
 		}
+		if (settings.furCling && receiver && Colossal::BeastForm(receiver.get()) != 0) {   // 0.8.0.8: it clings in the fur
+			emitter.stick = std::clamp((emitter.stick < 0.0f ? settings.semenStickiness : emitter.stick) * 1.6f, Settings::kStickinessMin, Settings::kStickinessMax);
+			emitter.profile.viscosity = std::clamp(emitter.profile.viscosity * 1.35f, Settings::kViscosityMin, Settings::kViscosityMax);
+		}
 		const auto& profile = emitter.profile;
 		emitter.colour = profile.colour;
 		if (!kind.hasColour) {
 			AnatomicaBridge::CumColour(actor.get(), emitter.colour);
+		}
+		if (Colossal::BeastForm(actor.get()) == 3) {   // 0.8.0.8: a Vampire Lord's
+			if (settings.lordBlood) {   // blood-dark
+				for (int c = 0; c < 3; ++c) {
+					emitter.colour[c] = emitter.colour[c] + (settings.lordBloodColour[c] - emitter.colour[c]) * settings.lordBloodMix;
+				}
+			}
+			if (settings.lordCold) {   // cold and thin: runs freer
+				emitter.profile.viscosity = std::clamp(emitter.profile.viscosity * 0.7f, Settings::kViscosityMin, Settings::kViscosityMax);
+				emitter.profile.cohesion = std::clamp(emitter.profile.cohesion * 0.85f, Settings::kCohesionMin, Settings::kCohesionMax);
+			}
 		}
 		emitter.glow = GiverGlow(actor.get(), emitter.colour);
 		emitter.amount = profile.amount;
@@ -674,6 +801,15 @@ namespace OStrands
 			emitter.loaded = true;
 		} else if (_ocum && a_event.thread == 0) {
 			emitter.wait = settings.ocumWait;
+		}
+		// 0.8.0.8: a blowjob finish can pull out onto the face
+		if (emitter.pair && emitter.pair->act == Act::kFellatio && receiver && settings.oral && settings.facialChance > 0.0f &&
+			std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < settings.facialChance) {
+			emitter.facial = true;
+			AnatomicaBridge::Facial(receiver.get(), actor.get(), emitter.amount);
+			if (settings.debugLog) {
+				logger::info("{} pulls out: a facial for {}", actor->GetDisplayFullName(), receiver->GetDisplayFullName());
+			}
 		}
 		if (settings.debugLog) {
 			logger::info("{} climaxes in thread {}: {}, amount x{:.2f}{}", actor->GetDisplayFullName(), a_event.thread,
@@ -762,6 +898,23 @@ namespace OStrands
 				}
 			}
 		}
+		if (a_emitter.facial && a_emitter.pair) {   // 0.8.0.8: from just in front of the face, at it
+			const auto receiver = a_emitter.pair->receiver.get();
+			auto*      receiver3D = receiver ? receiver->Get3D(false) : nullptr;
+			std::vector<Point> lips;
+			RE::NiPoint3       mouth, forward;
+			if (receiver3D && MouthSite(receiver3D, lips, mouth, forward)) {
+				const float  scale = receiver3D->world.scale;
+				RE::NiPoint3 up{ 0.0f, 0.0f, 1.0f };
+				if (auto* head = receiver3D->GetObjectByName(Names::Get().head)) {
+					up = head->world.rotate * RE::NiPoint3{ 0.0f, 0.0f, 1.0f };
+				}
+				nozzle = mouth + forward * (7.0f * scale) - up * (1.5f * scale);
+				axis = -forward + up * 0.35f;
+				axis.Unitize();
+				inside = false;
+			}
+		}
 		if (a_emitter.hasNozzle && a_delta > 0.0f) {
 			RE::NiPoint3 measured = (nozzle - a_emitter.lastNozzle) / (a_delta * kUnitsPerMeter);
 			if (const float speed = measured.Length(); speed > kMaxNozzleSpeed) {
@@ -831,6 +984,26 @@ namespace OStrands
 				                                     pulse.particles;
 				if (a_emitter.oozing) {
 					Deposit(a_emitter, static_cast<float>(pulse.particles - a_emitter.count));
+					// 0.8.0.8: a finish in the mouth can come out of the nose too (more likely deep in the throat)
+					if (!a_emitter.noseRolled && a_emitter.pair && OpeningOf(a_emitter.pair->act) == Opening::kMouth && settings.noseChance > 0.0f) {
+						a_emitter.noseRolled = true;
+						const bool deep = (end - center).Dot(inward) > 4.0f;
+						if (unit(_rng) < settings.noseChance + (deep ? settings.noseDeep : 0.0f)) {
+							const RE::NiPoint3 outward = -inward;
+							const RE::NiPoint3 sideN = Normalized(outward.Cross({ 0.0f, 0.0f, 1.0f }), { 1.0f, 0.0f, 0.0f });
+							const RE::NiPoint3 upN = sideN.Cross(outward);
+							const int          n = std::max(2, static_cast<int>(std::lround(6.0f * settings.noseAmount * (a_emitter.creature ? 2.0f : 1.0f))));
+							for (float s : { 0.35f, -0.35f }) {
+								Inject(a_emitter.pair->receiver, 0, center + upN * 2.3f + outward * 0.9f + sideN * s, outward * 2.5f + RE::NiPoint3{ 0.0f, 0.0f, -2.0f }, n, std::nullopt);
+							}
+							if (settings.debugLog) {
+								logger::info("a mouth finish comes out of the nose{}", deep ? " (deep in the throat)" : "");
+							}
+						}
+					}
+				} else if (!inside) {   // 0.8.0.8: where this spurt lands outside a body (stains on clothes, splashes)
+					Stains::Spurt(actor.get(), nozzle, Normalized(axis, { 0.0f, 0.0f, -1.0f }), pulse.speed, a_emitter.colour,
+						static_cast<float>(pulse.particles) / 40.0f * a_emitter.size);
 				}
 			}
 			const auto [origin, outlet] = source();
@@ -919,6 +1092,19 @@ namespace OStrands
 				return;
 			}
 		}
+		if (opening == Opening::kMouth) {   // 0.8.0.8: some is swallowed, the rest is held in the mouth
+			const float swallowed = a_particles * std::clamp(Settings::Get().swallow, 0.0f, 1.0f);
+			if (swallowed > 0.0f) {   // Anatomica makes a gulp
+				const float scale = a_emitter.amount / std::max(Settings::Get().Semen(false).amount, 0.01f);
+				const auto  receiver = a_emitter.pair->receiver.get();
+				const auto  giver = a_emitter.actor.get();
+				AnatomicaBridge::Swallow(receiver.get(), giver.get(), swallowed / static_cast<float>(std::max(a_emitter.planned, 1)) * scale);
+			}
+			a_particles -= swallowed;
+			if (a_particles < 1.0f) {
+				return;
+			}
+		}
 		auto          it = std::ranges::find_if(_reservoirs, [&](const Reservoir& r) {
 			return r.actor == a_emitter.pair->receiver && r.opening == opening;
 		});
@@ -950,14 +1136,15 @@ namespace OStrands
 			return std::ranges::any_of(d->anchors, [&](const Fluid::Anchor& a) { return a.owner == a_reservoir.id; });
 		});
 		const bool empty = a_reservoir.volume < 0.5f && a_reservoir.gush < 0.5f;
-		const bool dressed = root && !Revealing::Exposed(actor.get());
+		const bool mouth = a_reservoir.opening == Opening::kMouth;   // 0.8.0.8
+		const bool dressed = !mouth && root && !Revealing::Exposed(actor.get());   // (clothes do not cover a mouth)
 		if (dressed) {
 			if (a_reservoir.dressed <= 0.0f && settings.debugLog) {
 				logger::info("{} is dressed; their {} spills for {}s more", actor->GetDisplayFullName(), OpeningName(a_reservoir.opening), kDressedGrace);
 			}
 			a_reservoir.dressed += a_delta;
 		}
-		if (!root || a_reservoir.dressed > kDressedGrace || a_reservoir.age > kReservoirLife || (empty && !holding)) {
+		if (!root || a_reservoir.dressed > kDressedGrace || a_reservoir.age > kReservoirLife * (mouth ? 3.0f : 1.0f) || (empty && !holding)) {
 			if (settings.debugLog && actor) {
 				logger::info("{}'s {} stops leaking with {:.0f} left", actor->GetDisplayFullName(), OpeningName(a_reservoir.opening), a_reservoir.volume);
 			}
@@ -970,11 +1157,21 @@ namespace OStrands
 			return false;
 		}
 		const RE::NiPoint3 outward = -inward;
-		const RE::NiPoint3 exit = center + outward * kExitDepth;
+		RE::NiPoint3       exit = center + outward * kExitDepth;
+		if (mouth && rim.size() >= 4 && a_reservoir.gush < 1.0f) {   // 0.8.0.8: it dribbles out of a corner of the mouth (they take turns)
+			exit = rim[2 + (a_reservoir.run & 1u)].World() + outward * 0.15f;
+		}
 		const auto         plug = a_reservoir.plug.get();
 		const bool         plugged = !dressed && TipInside(plug.get(), center, inward);
+		if (!a_reservoir.plugged && plugged && a_reservoir.volume >= 10.0f) {   // 0.8.0.8: going in again pushes some out round the shaft
+			const float out = a_reservoir.volume * 0.2f;
+			a_reservoir.gush += out;
+			a_reservoir.volume -= out;
+		}
 		if (a_reservoir.plugged && !plugged && a_reservoir.volume >= 1.0f) {
-			const float gush = a_reservoir.volume * kGushShare;
+			auto* plug3D = plug ? plug->Get3D(false) : nullptr;
+			const bool knot = settings.knotHold && plug3D && (plug3D->GetObjectByName(RE::BSFixedString("WWLK 1")) || plug3D->GetObjectByName(RE::BSFixedString("WWRK 1")));
+			const float gush = a_reservoir.volume * (knot ? std::min(kGushShare * 2.5f, 0.85f) : kGushShare);   // 0.8.0.8: the knot held it all in
 			a_reservoir.gush += gush;
 			a_reservoir.volume -= gush;
 			if (settings.debugLog) {
@@ -1022,6 +1219,25 @@ namespace OStrands
 		const float wave = std::max(0.0f, std::sin(2.0f * std::numbers::pi_v<float> * a_reservoir.age / a_reservoir.period + a_reservoir.phase));
 		const float pulse = 0.25f + 1.5f * wave * wave;
 		float       rate = (plugged ? a_reservoir.volume * kSeep : a_reservoir.volume * kLeak * facing) * pulse;
+		if (mouth) {
+			rate *= settings.dribble;
+			std::uniform_real_distribution<float> roll(0.0f, 1.0f);
+			if (!plugged && settings.cough > 0.0f && a_reservoir.volume >= 40.0f && roll(_rng) < settings.cough * a_delta) {   // a cough
+				const float out = a_reservoir.volume * 0.45f;
+				a_reservoir.gush += out;
+				a_reservoir.volume -= out;
+				if (settings.debugLog) {
+					logger::info("{} coughs {:.0f} out of their mouth", actor->GetDisplayFullName(), out);
+				}
+			}
+			if (settings.noseDrip && !plugged && a_reservoir.volume >= 60.0f && roll(_rng) < 0.05f * a_delta) {   // from the nose
+				const RE::NiPoint3 sideN = Normalized(outward.Cross({ 0.0f, 0.0f, 1.0f }), { 1.0f, 0.0f, 0.0f });
+				const RE::NiPoint3 upN = sideN.Cross(outward);
+				const RE::NiPoint3 nose = center + upN * 2.3f + outward * 0.9f + sideN * (roll(_rng) < 0.5f ? 0.35f : -0.35f);
+				Inject(a_reservoir.actor, 0, nose, outward * 2.0f + RE::NiPoint3{ 0.0f, 0.0f, -3.0f }, 3, std::nullopt);
+				a_reservoir.volume -= 3.0f;
+			}
+		}
 		if (!plugged && a_reservoir.gush > 0.0f) {
 			rate += kGushRate * std::max(facing, 0.3f);
 		}
@@ -1060,7 +1276,10 @@ namespace OStrands
 			}
 			--a_reservoir.glob;
 			const RE::NiPoint3 wobble = (side * (unit(_rng) - 0.5f) + lift * (unit(_rng) - 0.5f)) * 0.4f;
-			const RE::NiPoint3 velocity = Normalized(outward + wobble, outward) * (kLeakSpeed * a_reservoir.globSpeed) + carried * 0.5f;
+			RE::NiPoint3 velocity = Normalized(outward + wobble, outward) * (kLeakSpeed * a_reservoir.globSpeed) + carried * 0.5f;
+			if (mouth && a_reservoir.gush < 1.0f) {   // 0.8.0.8: a slow dribble that runs down the chin
+				velocity = Normalized(outward * 0.35f + RE::NiPoint3{ 0.0f, 0.0f, -1.0f } + wobble * 0.3f, outward) * (kLeakSpeed * 0.45f) + carried * 0.5f;
+			}
 			const float        turn = unit(_rng) * 2.0f * std::numbers::pi_v<float>;
 			const RE::NiPoint3 disc = (side * std::cos(turn) + lift * std::sin(turn)) * (kGlobDisc * kSpacing * kUnitsPerMeter * std::sqrt(unit(_rng)));
 			Fluid::Particle    particle;
@@ -1228,15 +1447,32 @@ namespace OStrands
 		}
 		low = low - Vec3{ kSkinMargin, kSkinMargin, kSkinMargin };
 		high = high + Vec3{ kSkinMargin, kSkinMargin, kSkinMargin };
+		const bool hoverOn = Settings::Get().lordHover;
 		for (const auto& handle : a_domain.hosts) {
 			const auto actor = handle.get();
 			const auto surface = Body::SurfaceOf(actor.get());
+			// 0.8.0.8: a hovering Vampire Lord - below his hips nothing holds it, so it drips straight off
+			float floorZ = -1.0e9f;
+			if (hoverOn && Colossal::Levitating(actor.get())) {
+				auto* root = actor->Get3D(false);
+				auto* pelvis = root ? root->GetObjectByName(Names::Get().pelvis) : nullptr;
+				if (pelvis) {
+					floorZ = pelvis->world.translate.z - 4.0f * root->world.scale;
+				}
+			}
 			if (surface.patches.empty()) {
-				add(Body::Of(actor.get()));
+				for (const auto& capsule : Body::Of(actor.get())) {
+					if (capsule.a.z >= floorZ || capsule.b.z >= floorZ) {
+						add(std::span<const Body::Capsule>(&capsule, 1));
+					}
+				}
 				add(Body::ShaftOf(actor.get()));
 				continue;
 			}
 			for (const auto& patch : surface.patches) {
+				if (patch.position.z < floorZ) {
+					continue;
+				}
 				const Vec3 position = ToLocal(a_domain, patch.position);
 				if (position.x < low.x || position.y < low.y || position.z < low.z || position.x > high.x || position.y > high.y ||
 					position.z > high.z) {
@@ -1317,8 +1553,10 @@ namespace OStrands
 	{
 		auto& particles = a_domain.particles;
 		bool  expired = false;
+		const float wash = Stains::WashRate(a_domain.origin, a_domain.cell, a_domain.hosts) *   // 0.8.0.8: rain / water
+		                   Stains::LordRate(a_domain.origin, a_domain.cell, a_domain.hosts);    //   ... a Vampire Lord: cold, the sun
 		for (auto& particle : particles) {
-			particle.life -= a_delta;
+			particle.life -= a_delta * wash;
 			expired = expired || particle.life <= 0.0f;
 		}
 		if (!expired) {
@@ -1424,14 +1662,17 @@ namespace OStrands
 					material->specularColorScale = settings.shine;
 					material->specularPower = settings.gloss;
 				}
-				// 0.8.0.7: glowing semen - the shader's own emissive colour
-				if (auto* lighting = netimmerse_cast<RE::BSLightingShaderProperty*>(shader)) {
-					const bool glow = a_domain.glow[3] > 0.0f;
-					lighting->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, glow);
-					if (lighting->emissiveColor) {
-						*lighting->emissiveColor = glow ? RE::NiColor{ a_domain.glow[0], a_domain.glow[1], a_domain.glow[2] } : RE::NiColor{ 0.0f, 0.0f, 0.0f };
+				// 0.8.0.7: glowing semen - only the emissive colour here (the own-emit flag is set once, in Tint, before the
+				// geometry is set up); semen that does not glow is left exactly as the mesh has it
+				if (a_domain.glow[3] > 0.0f) {
+					if (auto* lighting = netimmerse_cast<RE::BSLightingShaderProperty*>(shader)) {
+						if (lighting->flags.any(RE::BSShaderProperty::EShaderPropertyFlag::kOwnEmit)) {
+							if (lighting->emissiveColor) {
+								*lighting->emissiveColor = RE::NiColor{ a_domain.glow[0], a_domain.glow[1], a_domain.glow[2] };
+							}
+							lighting->emissiveMult = a_domain.glow[3];
+						}
 					}
-					lighting->emissiveMult = glow ? a_domain.glow[3] : 0.0f;
 				}
 			}
 		}
@@ -2231,4 +2472,6 @@ namespace OStrands
 			}
 		}
 	}
+
+	std::string TintTexturePath(const std::array<float, 3>& a_colour) { return TintTexture(a_colour); }
 }

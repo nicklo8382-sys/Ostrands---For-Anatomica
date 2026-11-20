@@ -1,5 +1,6 @@
 #include "SexLabBridge.h"
 
+#include "Colossal.h"
 #include "AutoPairs.h"
 #include "FluidManager.h"
 #include "Settings.h"
@@ -276,7 +277,7 @@ namespace OStrands::SexLabBridge
 			for (const auto& entry : quest->refAliasMap) {
 				const auto reference = entry.second.get();
 				auto*      actor = reference ? reference->As<RE::Actor>() : nullptr;
-				if (actor && (creatures || Anatomy::IsPerson(actor)) && std::ranges::find(actors, actor->GetHandle()) == actors.end()) {
+				if (actor && (creatures || Anatomy::IsPerson(actor) || Colossal::BeastPerson(actor)) && std::ranges::find(actors, actor->GetHandle()) == actors.end()) {
 					actors.push_back(actor->GetHandle());
 				}
 			}

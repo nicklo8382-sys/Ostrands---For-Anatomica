@@ -1,5 +1,6 @@
 #include "Arousal.h"
 
+#include "Colossal.h"
 #include "Anatomy.h"
 #include "FluidManager.h"
 #include "Settings.h"
@@ -86,7 +87,7 @@ namespace OStrands::Arousal
 					a_actor->GetPosition().GetDistance(origin) > settings.arousalRadius) {
 					return;
 				}
-				if (!settings.creatures && !Anatomy::IsPerson(a_actor)) {
+				if (!settings.creatures && !Anatomy::IsPerson(a_actor) && !Colossal::BeastPerson(a_actor)) {
 					return;
 				}
 				const auto handle = a_actor->GetHandle();

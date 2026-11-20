@@ -34,7 +34,8 @@ namespace OStrands
 		{
 			kBridge,
 			kContact,
-			kDrip
+			kDrip,
+			kKiss   // 0.8.0.8: spit between two mouths as a kiss parts (no pair state: breaks by itself)
 		};
 
 		enum class Source
@@ -110,6 +111,9 @@ namespace OStrands
 			float   receiverDrip{ -1.0f };
 			float   giverDrip{ -1.0f };
 			bool    wasIn{ false };   // 0.8.0.7: the tip was inside (strings when it slides out)
+			float   shaftSpit{ 1.0f };   // 0.8.0.8: seconds to the next spit drip off the shaft
+			float   precumTimer{ -1.0f };   // 0.8.0.8
+			bool    touched{ false };       // 0.8.0.8: the tip is touching the opening (precum strings when it pulls away)
 		};
 
 		struct End
@@ -151,6 +155,9 @@ namespace OStrands
 			std::uint32_t                       serial{ 0 };
 			bool                                active{ false };
 			bool                                creature{ false };
+			std::string                         tint;          // 0.8.0.8: its own diffuse texture ("" = the mesh's)
+			std::string                         tintApplied;
+			std::string                         baseDiffuse;   //   ... the mesh's, to put back
 		};
 
 		struct Glint
@@ -179,6 +186,7 @@ namespace OStrands
 			RE::ActorHandle actor;
 			float           remaining{ 0.0f };
 			float           timer{ 0.0f };
+			bool            mouth{ false };   // 0.8.0.8: drool from the corners of the mouth
 		};
 
 		struct Excited
@@ -208,11 +216,18 @@ namespace OStrands
 		void        TrackSurface(PairState& a_state, float a_delta, const SurfaceSettings& a_surface);
 		void        TickDrips(PairState& a_state, float a_delta);
 		bool        SpawnBridges(PairState& a_state);
-		void SpawnPullStrings(PairState& a_state);   // 0.8.0.7
+		void SpawnPullStrings(PairState& a_state, int a_count = -1, float a_radius = 1.15f);   // 0.8.0.7 (0.8.0.8: count / thickness for precum strings)
+		void TickPrecum(PairState& a_state, float a_delta);   // 0.8.0.8
+		void TickKissing(float a_delta);                      // 0.8.0.8
+		void TickTongues(float a_delta);                      // 0.8.0.8: beast forms drool from the tongue tip
+		void        SpawnShaftSpit(PairState& a_state);   // 0.8.0.8
 		void        SpawnCrotch(PairState& a_state);
 		void        SpawnSurface(PairState& a_state, const SurfaceSettings& a_surface);
 		void        SpawnDrip(PairState& a_state, Source a_source);
-		void        SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale = 1.0f);
+		void        SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale = 1.0f,
+			const std::string& a_tint = {});
+		void        Retexture(Strand& a_strand);   // 0.8.0.8
+		void        TickBats(float a_delta);       // 0.8.0.8: a Vampire Lord bursting into bats snaps his strands
 		void        BeginLinger(const PairState& a_state);
 		void        TickLinger(float a_delta);
 		void        TickAroused(float a_delta);
@@ -238,6 +253,13 @@ namespace OStrands
 		std::vector<PairState>    _pairs;
 		std::vector<Linger>       _lingering;
 		std::vector<Excited>      _aroused;
+		struct Kiss { RE::ActorHandle a, b; float close{ 0.0f }; float gone{ 0.0f }; bool lips{ false }; bool passed{ false }; };
+		std::vector<Kiss>         _kisses;   // 0.8.0.8
+		float                     _kissPoll{ 0.0f };
+		struct Tongue { RE::ActorHandle actor; float timer{ 0.0f }; float seen{ 0.0f }; };
+		std::vector<Tongue>       _tongues;   // 0.8.0.8
+		std::unordered_map<std::uint32_t, RE::NiPoint3> _lordAt;   // 0.8.0.8: where each Vampire Lord with strands was last frame
+		float                     _tonguePoll{ 0.0f };
 		std::vector<Strand>       _strands;
 		RE::NiPointer<RE::NiNode> _prototype;
 		bool                      _meshFailed{ false };

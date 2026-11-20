@@ -1,6 +1,6 @@
 OStrands by LeonVanWinkle (Saint), with contributions from crajjjj.
 
-This is a modified version of OStrands 0.8.0, released as 0.8.0.7 and packaged with Anatomica - Anatomical Anus for HIMBO
+This is a modified version of OStrands 0.8.0, released as 0.8.0.8 and packaged with Anatomica - Anatomical Anus for HIMBO
 (optional installer option). It is
 distributed under the GNU General Public License version 3; see
 OStrands-LICENSE.txt.
@@ -47,6 +47,20 @@ Modifications:
     and per giver from Anatomica (Anatomica_CumGlow); OStrands_EmitGlow.
   - Beaded strings ([Shape] Beads), splats ([Semen] Splats), thick cords for
     a Colossal Load ([ColossalLoad] Cords).
+- 0.8.0.8, personal build (Claude for Riotguards), 2026-11-20:
+  - Glow set up once per glowing semen mesh; non-glowing semen left as it was.
+  - The mouth after oral: swallow share, dribble from the corners, cough,
+    nose drip; spit drool strings, spit on the shaft, drool after oral.
+  - Swallowing reported to Anatomica (Anatomica_Swallow); precum by OStim
+    excitement ([Precum]), into openings (Anatomica_Precum), precum strings.
+  - Facials ([Oral] FacialChance, reported with Anatomica_Facial), kissing
+    strings and snowballing ([Oral] KissStrings, Snowball), squeeze-out of a
+    full opening on deep thrusts and on going in again.
+  - OStim Beast Form support ([BeastForm]): beast forms count as people,
+    its "Big loads" option read from its script, knot strings, wider beast
+    mouths, fur cling, knot hold, tongue drool.
+  - Stains and splashes (decals via BGSDecalManager), rain / water washing,
+    nose overflow at a mouth finish; decal textures in textures\OStrands\decals.
 
 Source code: the complete source of this build is linked on the
 Anatomica mod page (Permissions and credits). Upstream fork: https://gitlab.com/Keevan2374/ostrands

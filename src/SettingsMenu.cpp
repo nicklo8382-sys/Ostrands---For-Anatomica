@@ -379,6 +379,69 @@ namespace OStrands::SettingsMenu
 				&Settings::fingering, on));
 			page.push_back(std::make_unique<Toggle>("Toy strands", "Strands for dildos and other toys. Applies from the next scene.", &Settings::toys, on));
 
+			page.push_back(std::make_unique<Heading>("Mouth and spit"));
+			page.push_back(std::make_unique<Slider<float>>("Swallowed", "Share of a finish in the mouth that is swallowed. The rest is held and dribbles out of the corners of the mouth, down the chin.",
+				&Settings::swallow, 0.0f, 1.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<float>>("Dribble speed", "How fast it comes out of the corners of the mouth. Lower holds it longer and lets it out slower.",
+				&Settings::dribble, 0.05f, 2.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<float>>("Cough", "Chance each second, while the mouth is very full, of a cough that pushes some out. 0 = never.",
+				&Settings::cough, 0.0f, 1.0f, 0.01f, on));
+			page.push_back(std::make_unique<Slider<float>>("Spit", "How sloppy oral is: how often drool strings and drips come from the mouth (0 = none, 1 = normal, 3 = very sloppy).",
+				&Settings::spit, 0.0f, 3.0f, 0.1f, on));
+			page.push_back(std::make_unique<Toggle>("Spit on the shaft", "The shaft drips spit during a blowjob.", &Settings::spitShaft, on));
+			page.push_back(std::make_unique<Slider<float>>("Drool after", "Seconds that drool strings keep coming from the corners of the mouth after oral. 0 = none.",
+				&Settings::droolTime, 0.0f, 120.0f, 1.0f, on));
+			page.push_back(std::make_unique<Toggle>("Nose drip", "A very full mouth can drip from the nose too.", &Settings::noseDrip, on));
+			page.push_back(std::make_unique<Slider<float>>("Facial", "Chance a finish during a blowjob pulls out and lands on the face instead of in the mouth. With Anatomica 2.6j it stays on the face as a layer until washed.",
+				&Settings::facialChance, 0.0f, 1.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<float>>("Out of the nose", "Chance a finish in the mouth comes out of the nose too. 0 = never.", &Settings::noseChance, 0.0f, 1.0f, 0.01f, on));
+			page.push_back(std::make_unique<Slider<float>>("Nose, deep in the throat", "Added to that chance when the tip is deep in the throat.", &Settings::noseDeep, 0.0f, 1.0f, 0.01f, on));
+			page.push_back(std::make_unique<Slider<float>>("Nose amount", "How much comes out of the nose (a Colossal Load is double).", &Settings::noseAmount, 0.1f, 4.0f, 0.05f, on));
+			page.push_back(std::make_unique<Toggle>("Kissing strings", "Strings of spit between the lips as a kiss parts.", &Settings::kissStrings, on));
+			page.push_back(std::make_unique<Toggle>("Snowballing", "A kiss passes cum held in one mouth into the other.", &Settings::snowball, on));
+
+			page.push_back(std::make_unique<Heading>("Stains and splashes"));
+			page.push_back(std::make_unique<Toggle>("Stains and splashes", "Where a spurt lands outside a body it leaves a mark, through the game's own decals (like blood). How long they stay is the game's decal setting.", &Settings::stains, on));
+			page.push_back(std::make_unique<Toggle>("On clothes and armour", "A stain where it lands on someone dressed there.", &Settings::stainClothes, on));
+			page.push_back(std::make_unique<Toggle>("On walls, furniture and floors", "A splash where it lands in the world.", &Settings::stainWorld, on));
+			page.push_back(std::make_unique<Slider<float>>("Stain size", "x the size of stains and splashes.", &Settings::stainSize, 0.2f, 4.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<float>>("Spurt reach", "x how far a spurt flies when working out where it lands (aim).", &Settings::stainArc, 0.2f, 3.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<int>>("Stains a second", "At most this many new stains and splashes a second.", &Settings::stainsPerSecond, 1, 60, 1, on));
+			page.push_back(std::make_unique<Heading>("Rain and water"));
+			page.push_back(std::make_unique<Toggle>("Rain and water wash it off", "Out in the rain it goes faster; standing in water faster still.", &Settings::weather, on));
+			page.push_back(std::make_unique<Slider<float>>("In the rain", "x as fast as when dry.", &Settings::rainWash, 1.0f, 20.0f, 0.1f, on));
+			page.push_back(std::make_unique<Slider<float>>("In water", "x as fast as when dry.", &Settings::waterWash, 1.0f, 50.0f, 0.5f, on));
+			page.push_back(std::make_unique<Toggle>("A roof keeps the rain off", "Under a roof or an overhang the rain does not wash it.", &Settings::shelter, on));
+
+			page.push_back(std::make_unique<Heading>("Beast forms (OStim Beast Form)"));
+			page.push_back(std::make_unique<Toggle>("Beast forms are people", "Werewolf, werebear and Vampire Lord forms get semen and strands even with creatures off - they are transformed people.", &Settings::beastPeople, on));
+			page.push_back(std::make_unique<Toggle>("Follow Beast Form's Big loads", "While OStim Beast Form's \"Big loads\" is on, werewolves and werebears get a Colossal Load (Vampire Lords have their own option below). Anatomica decides instead when it is linked.", &Settings::beastBigLoads, on));
+			page.push_back(std::make_unique<Toggle>("Knot strings", "A knot pulling out of an opening leaves more, thicker strings, and pushes out some of what it holds.", &Settings::knotStrings, on));
+			page.push_back(std::make_unique<Slider<float>>("Muzzle size", "How much wider a beast form's mouth is than a person's: where drool, dribble and kissing strings come from.", &Settings::beastMouth, 1.0f, 3.0f, 0.05f, on));
+			page.push_back(std::make_unique<Toggle>("Clings to fur", "On werewolf, werebear and Vampire Lord forms, semen sticks in the fur and runs off slower.", &Settings::furCling, on));
+			page.push_back(std::make_unique<Toggle>("Knot holds it in", "While a knot is inside, nothing gets out; when it pulls out, a bigger gush (with Anatomica, Anatomica handles its own men).", &Settings::knotHold, on));
+			page.push_back(std::make_unique<Toggle>("Tongue drool", "Werewolf and werebear forms drip spit from the tip of the tongue (or the mouth) when excited (OStim excitement).", &Settings::tongueDrool, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: big load", "Vampire Lords get a Colossal Load of their own (Beast Form gives them a normal one). Anatomica decides instead when it is linked.", &Settings::lordBigLoads, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords drool too", "With Tongue drool on, Vampire Lords drip spit from the mouth when excited as well.", &Settings::lordDrool, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: blood-dark cum", "A Vampire Lord's cum is tinted dark red.", &Settings::lordBlood, on));
+			page.push_back(std::make_unique<ColourPick>("Vampire Lord cum colour", "The colour it is tinted towards.", &Settings::lordBloodColour,
+				[] { return Settings::Get().enabled && Settings::Get().lordBlood; }));
+			page.push_back(std::make_unique<Slider<float>>("Vampire Lord tint", "How much of that colour: 0 = his normal colour, 1 = all of it.", &Settings::lordBloodMix, 0.0f, 1.0f, 0.05f,
+				[] { return Settings::Get().enabled && Settings::Get().lordBlood; }));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: cold and thin", "A Vampire Lord's cum is cold: it runs freer and stays wet longer.", &Settings::lordCold, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: hovering", "While he levitates, what runs down him drips straight off below the hips instead of running down his legs.", &Settings::lordHover, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: bat burst", "When he bursts into bats (his teleport), the strands on him snap.", &Settings::lordBats, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: blood drool", "With his drool on: very excited, or casting Vampiric Drain, it comes out red.", &Settings::lordBloodDrool, on));
+			page.push_back(std::make_unique<Toggle>("Vampire Lords: fang strings", "Spit strings hang from his fangs as well as his lips.", &Settings::lordFangs, on));
+			page.push_back(std::make_unique<Slider<float>>("Vampire Lords: sunlight", "Out in the sun, it dries off a Vampire Lord this much faster (1 = off).", &Settings::lordSun, 1.0f, 10.0f, 0.5f, on));
+
+			page.push_back(std::make_unique<Heading>("Precum"));
+			page.push_back(std::make_unique<Toggle>("Precum when close", "In a scene, the tip beads and drips more and more as he gets close (OStim excitement). Inside someone it goes into them (with Anatomica it wets him and adds to what he holds; in a mouth it is held there).",
+				&Settings::precum, on));
+			page.push_back(std::make_unique<Slider<float>>("Starts at", "OStim excitement at which it starts (0-100).", &Settings::precumFrom, 0.0f, 99.0f, 1.0f, on));
+			page.push_back(std::make_unique<Slider<float>>("How often", "More or fewer drips.", &Settings::precumRate, 0.2f, 3.0f, 0.1f, on));
+			page.push_back(std::make_unique<Toggle>("Precum strings", "Clear strings when the tip touches an opening or lips and pulls away again without going in.", &Settings::precumStrings, on));
+
 			page.push_back(std::make_unique<Heading>("Spawning"));
 			page.push_back(std::make_unique<Slider<float>>("Bridge rate", "Most strands per second between the opening and the shaft.",
 				&Settings::bridgeRate, Settings::kRateMin, Settings::kRateMax, 0.1f, on));
