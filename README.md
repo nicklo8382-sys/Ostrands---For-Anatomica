@@ -1,78 +1,128 @@
-# OStrands
+## OStrands for Anatomica
 
-This mod will create procedural fluid strands for OStim Standalone scenes. An SKSE plugin for Skyrim Special Edition. I feel like scenes are dry, so I've coded this mod. When bodies touch and part during a scene, OStrands draws thin, viscous strands that stretch, thin out, bead and snap, along with passive drips that run down and fall away.
+OStrands is an SKSE plugin for Skyrim SE/AE. It draws procedural strands, drips and semen in OStim and SexLab scenes.
 
-## Features
+This is a modified build of [OStrands by LeonVanWinkle (Saint)](https://gitlab.com/LilRicefield/ostrands), with contributions from crajjjj, based on [Keevan2374's fork](https://gitlab.com/Keevan2374/ostrands). It links OStrands to [Anatomica - Anatomical Anus for HIMBO](#anatomica-link) and adds a few settings of its own. The current version is **0.8.0.6**, based on upstream OStrands 0.8.0.
 
-- **Pull-out strands** between the opening and the shaft on every outstroke: vaginal, anal and blowjobs
-- **Crotch strands** between the two bodies as they part after a thrust
-- **Drips** that stretch down from the vagina. Women wearing a strap-on drip too
-- **Scissoring, cunnilingus, rimming, fingering and masturbation**
-- **Toys**, including double-ended dildos from animation packs
-- **Semen** when someone with a schlong climaxes: spurting ropes that stretch and snap, a dribble that hangs from the tip, and creampies that stay inside and leak out after pulling out. Vaginal, anal and oral
-- **Body collision**, so strands, drips and semen land on bodies, slide down skin and follow them as they move. Semen, strands and drips collide with the actual body mesh, so any body, BodySlide preset or physics setup works. The schlong is measured too, so semen leaves the real tip and runs down the shaft
-- Contact detection that calibrates itself to each animation and speed, including very deep thrusts
-- More later on. Depends on if I have time or not...
+All credit for OStrands itself goes to its original authors - see [Credits](#credits).
 
-## Requirements
+### What this build adds
 
-- Skyrim Special Edition  1.6.1170. Other versions are untested. Can work with the 1.7.xx ones
-- SKSE64
-- Address Library
-- Latest OStim Standalone
-- A female body and skeleton with genital bones (I only tested with CBBE 3BA)
-- Male genitals with the `NPC Genitals01`–`06` bones (tested with The New Gentleman)
-- Optional: OCum Ascended. With it, semen turns on by itself and each load is as big as OCum says. Without it, turn semen on in the menu
+- **Anatomica link.** With Anatomica 2.6 or newer, strands and semen start at his real opening, and a finish inside him is handed to Anatomica: he holds it, it seeps out over time, and he gushes, floods or squirts it out later. A finish stays in him while the tip is near, so it no longer sprays out whenever the animation pulls back.
+- **Colossal Load.** A bigger, thicker, heavier finish. Anatomica decides who gets one and how big (by schlong size or a chance per scene), and its globs and ropes are drawn bigger to match.
+- **Semen colour.** Any colour, set in the ini or given per man by Anatomica (per race, skin tint or skin rules).
+- **Men as the receiver.** When a scene calls for vaginal but the receiver has no vagina, the anus is used.
+- **Exports for other SKSE plugins** to add semen of their own.
 
-## Installation
+Without Anatomica, OStrands works as normal; the Anatomica settings simply do nothing.
 
-Install the archive with your mod manager. There is no plugin file, no scripts, and nothing is written to your save, so OStrands can be added or removed at any time outside a scene.
+### Requirements
 
-The DLL is named `0_OStrands.dll` so it loads before OStim. Older SKSE builds for 1.5.97 only connect add-ons that load before OStim. If you install by hand and are updating from 0.7.0 or earlier, delete the old `Data\SKSE\Plugins\OStrands.dll`.
+- SKSE and Address Library for SKSE Plugins
+- The original [OStrands](https://www.nexusmods.com/skyrimspecialedition/mods/195115) of the same upstream version (the first three numbers of this version, currently 0.8.0). This build ships only the SKSE plugin and its ini; the meshes and textures come from the original.
+- OStim Standalone or SexLab (SexLab P+ is supported)
 
-## Settings
+Optional: Anatomica 2.6+ (for the link), SKSE Menu Framework (in-game settings), OCum, SexLab Aroused / SLO Aroused NG / OSL Aroused (arousal drips), PPA - Penetration Physics.
 
-In game, open OStim's MCM and go to the **Addons** page. The **OStrands** group lets you toggle each strand type and set the rates, drip interval, transparency, strand limit and body collision. **Show collision shapes** draws the body shapes, the schlong tip and the openings, so you can check they line up with your body. The **OStrands Semen** group turns semen on or off and tunes the load size, spurts, thickness, stickiness and how long it stays. Changes apply immediately and are saved to `Data/SKSE/Plugins/OStrands.ini`. Everything else, such as thickness, physics and per-act tuning, lives in the INI. After editing it, press **Reload OStrands.ini** in the menu. No need for exiting and rejoining.
+### Install
 
-### Collision inspection
+1. Install the original OStrands with your mod manager.
+2. Install this build after it and let it overwrite the original's `0_OStrands.dll` and `OStrands.ini` (in MO2, put this below OStrands). Anatomica's installer can do this for you with its "OStrands fluids" option.
 
-Semen collides with the actual body. OStrands reads every skinned mesh an actor wears, including the body, hands, feet, head, schlong and any clothes, keeps evenly spaced points with their bone weights, and moves them with the skeleton every frame the same way the game moves the mesh. It follows animations, BodySlide and OBody presets, and jiggle physics. Hair, see-through overlays and inner surfaces such as a separate vaginal canal are left out. Strands and drips collide with the same wrap. When no mesh can be read, OStrands falls back to capsules measured from the body.
+Put your own changes in `OStrands_User.ini`, which updates never overwrite.
 
-Turn on **Show collision shapes** to check it. The console-selected actor is shown when there is one, otherwise the actors in active scenes, or the player. Cyan dots sit on the skin where the wrap is, with a dot and a short line at the schlong tip and a dot at each opening fluid leaks from. Turn it off to play.
+### Settings
 
-With **Debug log** on, `OStrands.log` lists which meshes went into each wrap and why any were left out. **Refit collision shapes** measures everyone again on the next update.
-
-### Animation packs
-
-OStrands recognises scenes by OStim action name and falls back to action tags. This keeps it working with mods that rewrite OStim's action files, such as OSSO. If an animation pack adds its own action names, map them in the `[Actions]` section of the INI:
+These go in `Data/SKSE/Plugins/OStrands.ini` (or `OStrands_User.ini`). Most are also in the SKSE Menu Framework settings.
 
 ```ini
-someaction = vaginal
+[General]
+; a scene asks for vaginal but the receiver has no vagina (men): use the anus
+NoVaginaUsesAnus = true
+
+[Anatomica]
+Enabled = true
+; strands and semen start at his real opening
+Hole = true
+; what goes into an Anatomica anus is given to Anatomica, which lets it out later
+HandOver = true
+; each man's cum colour comes from Anatomica
+Colour = true
+; Anatomica decides who gets a Colossal Load and how big
+Load = true
+; a finish inside him stays in while the tip is near
+Hold = true
+; share that spills out round the shaft (0-1); Anatomica lets the rest out later
+Overflow = 0.1
+; what Anatomica lets out of him: how much it clings (0-5) and how thick (0-100)
+OutStickiness = 0.9
+OutViscosity = 70.0
+
+[ColossalLoad]
+; strand thickness for a Colossal Load
+Shape = true
+Radius = 0.14
+
+[Semen]
+; 0-255 red, green, blue
+Colour = 236, 233, 222
 ```
 
-Valid values: `vaginal`, `anal`, `blowjob`, `cunnilingus`, `rimming`, `fingering`, `analfingering`, `scissoring`, `toy`, `analtoy`, `none`. With `DebugLog = true`, `OStrands.log` lists the actions of every scene that produced no strands.
+How big a Colossal Load is, and who gets one, is set in Anatomica's menu (Integrations page > Colossal Load).
 
+### For other SKSE plugins
 
-## Building from source
+- `OStrands_ApiVersion()`
+- `OStrands_Emit(actor, stream, point[3], velocity[3] in units/s, count, rgb[3] or null)` - adds semen at a point
+- `OStrands_SemenOn()` - whether semen is enabled
 
-Requires Visual Studio 2022 or newer (or the Build Tools) with the C++ desktop workload, C++ CMake tools and vcpkg, plus Git and Python 3.
+### Building
 
-```bat
-git clone --depth 1 --branch v12.1.0 https://github.com/alandtse/CommonLibSSE-NG extern/CommonLibSSE-NG
-build.cmd
-python tools\package.py
-```
+1. Clone CommonLibSSE-NG into `extern/`:
+   ```
+   git clone --depth 1 --branch v12.1.0 https://github.com/alandtse/CommonLibSSE-NG extern/CommonLibSSE-NG
+   ```
+2. Run `build.cmd`. It needs Visual Studio's C++ build tools and vcpkg. The plugin is written to `build/release/0_OStrands.dll`.
+3. Run `package.cmd` to build the release zip in `dist/`. It contains only the plugin, `OStrands.ini`, the license and a notice; the meshes and textures come from the original mod.
 
-The plugin is written to `build/release/0_OStrands.dll` and the release archive to `dist/`. The first build compiles CommonLibSSE-NG and takes a while. `tools/make_strand.py` regenerates the strand mesh and textures, `tools/make_fluid.py` the semen meshes and textures, and `tools/make_collision.py` the collision inspector's mesh and textures.
+### Versions
 
-## License
+Versions follow upstream OStrands with one extra number: `upstream.version.revision`. `0.8.0.6` is based on upstream 0.8.0.
 
-GPL-3.0. `extern/ostim` contains OStim Standalone's plugin interface headers, unchanged and also under GPL-3.0; see `extern/ostim/NOTICE.txt`.
+### Changelog
 
-## Credits
+**0.8.0.6**
+- A finish that starts inside an Anatomica anus stays in him while the tip is near (`[Anatomica] Hold`), and only `[Anatomica] Overflow` (10%) spills out round the shaft; Anatomica lets the rest out later. Before, most of it ended up on the floor.
+- Its own stickiness and thickness for what Anatomica lets out of him (`OutStickiness`, `OutViscosity`), separate from the schlong's spurts.
+- A Colossal Load is drawn bigger: its globs and ropes are scaled by its thickness.
 
-- Bethesda
-- [OStim Standalone](https://github.com/VersuchDrei/OStimNG) by VersuchDrei and contributors
-- [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG)
-- SimpleIni and spdlog
-## Sloppy sex whatever the heck 
+**0.8.0.5**
+- What is handed to Anatomica is counted in normal loads, so a Colossal Load (or a big OCum load) counts as several.
+
+**0.8.0.4**
+- Colossal Load (`[ColossalLoad]`), with Anatomica deciding who gets one and how big, as multipliers on `[Semen]` plus an optional colour.
+
+**0.8.0.3**
+- `[Semen] Colour`: semen colour (0-255 RGB), drawn with a tinted copy of `semen.dds` written to `textures\OStrands\Tint`.
+- `[General] NoVaginaUsesAnus`.
+- `[Anatomica]`: the anus position comes from Anatomica, finishes inside an Anatomica anus are handed to Anatomica, and Anatomica's cum colours are used.
+- Exports for other SKSE plugins.
+
+**0.8.0.1 - 0.8.0.2**
+- Keevan2374's fork releases; see [its page](https://gitlab.com/Keevan2374/ostrands).
+
+### Credits
+
+- LeonVanWinkle (Saint) for OStrands: the plugin, the strand simulation, and the strand mesh and textures, with contributions from crajjjj.
+- Keevan2374 for the fork this build is based on.
+- VersuchDrei and the OStim Standalone team for OStim and its plugin interface (GPL v3.0).
+- alandtse and the CommonLibSSE-NG maintainers for CommonLibSSE-NG (MIT).
+- The SKSE team for the Skyrim Script Extender, and meh321 for Address Library for SKSE Plugins.
+- Brodie Thatcher for SimpleIni (MIT) and Gabi Melman for spdlog (MIT).
+- Bethesda for Skyrim.
+
+### License
+
+GNU General Public License v3.0; see `LICENSE`. The changes in this build are listed in `NOTICE.txt`.
+
+Original source: https://gitlab.com/LilRicefield/ostrands
