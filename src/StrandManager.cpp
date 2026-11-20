@@ -919,7 +919,7 @@ namespace OStrands
 
 		// 0.8.0.8: precum strings - the tip touches the opening / lips and pulls away again without going in
 		if (!anchors.toy && settings.precumStrings) {
-			const float near = anchors.tip.GetDistance(anchors.center);
+			const float tipGap = anchors.tip.GetDistance(anchors.center)
 			if (depth > 0.5f) {
 				a_state.touched = false;
 			} else if (near < 2.2f && !a_state.wasIn) {
