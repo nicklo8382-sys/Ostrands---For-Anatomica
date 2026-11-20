@@ -919,12 +919,12 @@ namespace OStrands
 
 		// 0.8.0.8: precum strings - the tip touches the opening / lips and pulls away again without going in
 		if (!anchors.toy && settings.precumStrings) {
-			const float tipGap = anchors.tip.GetDistance(anchors.center)
+			const float tipGap = anchors.tip.GetDistance(anchors.center);
 			if (depth > 0.5f) {
 				a_state.touched = false;
-			} else if (near < 2.2f && !a_state.wasIn) {
+			} else if (tipGap < 2.2f && !a_state.wasIn) {
 				a_state.touched = true;
-			} else if (a_state.touched && near > 3.8f) {
+			} else if (a_state.touched && tipGap > 3.8f) {
 				a_state.touched = false;
 				if (Excitement(a_state.pair.giver.get().get()) >= 20.0f && std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.6f) {
 					SpawnPullStrings(a_state, 1 + (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.4f ? 1 : 0), 0.6f);
