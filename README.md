@@ -1,127 +1,78 @@
-## OStrands with Creature Support for SexLab and OStim
+# OStrands
 
-OStrands is an SKSE plugin for Skyrim SE/AE. It draws procedural strands, drips and semen in OStim and SexLab scenes.
+This mod will create procedural fluid strands for OStim Standalone scenes. An SKSE plugin for Skyrim Special Edition. I feel like scenes are dry, so I've coded this mod. When bodies touch and part during a scene, OStrands draws thin, viscous strands that stretch, thin out, bead and snap, along with passive drips that run down and fall away.
 
-This is Keevan2374's fork of [OStrands by LeonVanWinkle](https://gitlab.com/LilRicefield/ostrands). It adds creature support. The current version is **0.8.0.2**, based on upstream OStrands 0.8.0.
+## Features
 
-### What this fork changes
+- **Pull-out strands** between the opening and the shaft on every outstroke: vaginal, anal and blowjobs
+- **Crotch strands** between the two bodies as they part after a thrust
+- **Drips** that stretch down from the vagina. Women wearing a strap-on drip too
+- **Scissoring, cunnilingus, rimming, fingering and masturbation**
+- **Toys**, including double-ended dildos from animation packs
+- **Semen** when someone with a schlong climaxes: spurting ropes that stretch and snap, a dribble that hangs from the tip, and creampies that stay inside and leak out after pulling out. Vaginal, anal and oral
+- **Body collision**, so strands, drips and semen land on bodies, slide down skin and follow them as they move. Semen, strands and drips collide with the actual body mesh, so any body, BodySlide preset or physics setup works. The schlong is measured too, so semen leaves the real tip and runs down the shaft
+- Contact detection that calibrates itself to each animation and speed, including very deep thrusts
+- More later on. Depends on if I have time or not...
 
-- **Creatures in SexLab and OStim scenes.** Creatures stay in the scene alongside humans. Strands, auto-pairing, body collision and semen follow each creature's own penis bones.
-- **Creature penis rigs.** A creature skeleton is matched to a rig: a chain of penis bones from base to tip, their forward axis, how far the tip sits past the last bone, and the shaft radius. Rigs for BakaFactory ABC skeletons are built in.
-- **Penis bones read from the mesh.** A creature whose skeleton matches no rig gets its penis bones from the erect penis mesh it wears, so other creature packs work too.
-- **Erect only.** A creature only has a penis while it wears an erect mesh, such as the aroused meshes Creature Framework swaps in. A soft creature makes no strands, semen or precum.
-- **Arousal precum for creatures.** An aroused male creature drips precum outside scenes, the same way people do. This only works if your arousal mod gives creatures an arousal value.
+## Requirements
 
-Creatures can only be the giver. Creature receivers and creature mouths aren't supported yet, because creature skeletons don't have the opening and mouth bones OStrands looks for.
+- Skyrim Special Edition  1.6.1170. Other versions are untested. Can work with the 1.7.xx ones
+- SKSE64
+- Address Library
+- Latest OStim Standalone
+- A female body and skeleton with genital bones (I only tested with CBBE 3BA)
+- Male genitals with the `NPC Genitals01`–`06` bones (tested with The New Gentleman)
+- Optional: OCum Ascended. With it, semen turns on by itself and each load is as big as OCum says. Without it, turn semen on in the menu
 
-The creature support is new and has only been tested in game with some creatures. Turn on `DebugLog` and check `OStrands.log` if something looks off.
+## Installation
 
-### Requirements
+Install the archive with your mod manager. There is no plugin file, no scripts, and nothing is written to your save, so OStrands can be added or removed at any time outside a scene.
 
-- SKSE and Address Library for SKSE Plugins
-- The original [OStrands](https://www.nexusmods.com/skyrimspecialedition/mods/195115) of the same upstream version (the first three numbers of this fork's version, currently 0.8.0). This fork ships only the SKSE plugin and its ini; the meshes and textures come from the original.
-- OStim Standalone or SexLab (SexLab P+ is supported)
-- For creatures: SexLab or OStim with creature animations, creature skeletons with penis bones, and erect creature meshes (for example More Nasty Critters with Creature Framework). The built-in rigs match BakaFactory ABC.
+The DLL is named `0_OStrands.dll` so it loads before OStim. Older SKSE builds for 1.5.97 only connect add-ons that load before OStim. If you install by hand and are updating from 0.7.0 or earlier, delete the old `Data\SKSE\Plugins\OStrands.dll`.
 
-Optional: SKSE Menu Framework (in-game settings), OCum, SexLab Aroused / SLO Aroused NG / OSL Aroused (arousal drips), PPA - Penetration Physics.
+## Settings
 
-### Creature settings
+In game, open OStim's MCM and go to the **Addons** page. The **OStrands** group lets you toggle each strand type and set the rates, drip interval, transparency, strand limit and body collision. **Show collision shapes** draws the body shapes, the schlong tip and the openings, so you can check they line up with your body. The **OStrands Semen** group turns semen on or off and tunes the load size, spurts, thickness, stickiness and how long it stays. Changes apply immediately and are saved to `Data/SKSE/Plugins/OStrands.ini`. Everything else, such as thickness, physics and per-act tuning, lives in the INI. After editing it, press **Reload OStrands.ini** in the menu. No need for exiting and rejoining.
 
-These go in `Data/SKSE/Plugins/OStrands.ini`. Put your own changes in `OStrands_User.ini`, which updates never overwrite.
+### Collision inspection
+
+Semen collides with the actual body. OStrands reads every skinned mesh an actor wears, including the body, hands, feet, head, schlong and any clothes, keeps evenly spaced points with their bone weights, and moves them with the skeleton every frame the same way the game moves the mesh. It follows animations, BodySlide and OBody presets, and jiggle physics. Hair, see-through overlays and inner surfaces such as a separate vaginal canal are left out. Strands and drips collide with the same wrap. When no mesh can be read, OStrands falls back to capsules measured from the body.
+
+Turn on **Show collision shapes** to check it. The console-selected actor is shown when there is one, otherwise the actors in active scenes, or the player. Cyan dots sit on the skin where the wrap is, with a dot and a short line at the schlong tip and a dot at each opening fluid leaks from. Turn it off to play.
+
+With **Debug log** on, `OStrands.log` lists which meshes went into each wrap and why any were left out. **Refit collision shapes** measures everyone again on the next update.
+
+### Animation packs
+
+OStrands recognises scenes by OStim action name and falls back to action tags. This keeps it working with mods that rewrite OStim's action files, such as OSSO. If an animation pack adds its own action names, map them in the `[Actions]` section of the INI:
 
 ```ini
-[Creatures]
-Enabled = true
-
-[CreatureRigs]
-; name = penis bones from base to tip | forward axis (x, y or z) | tip extension | shaft radius
-troll = TD 2, TD 3, TD 4, TD 5, TD 6, TD 7 | x | 0.1 | 1.1
+someaction = vaginal
 ```
 
-- A skeleton uses the first rig whose bones it has, all of them. If none match, a creature's penis bones are read from the erect penis mesh it wears, so packs without a rig still work.
-- A creature only counts as having a penis while it wears an erect mesh skinned to those bones. On its soft mesh it has none.
-- Change a built-in rig by repeating its name with new values.
-- Remove a built-in rig with `name = none`.
-- Add a new rig with a new name.
-- A shaft radius of `0` measures the shaft from the worn mesh.
+Valid values: `vaginal`, `anal`, `blowjob`, `cunnilingus`, `rimming`, `fingering`, `analfingering`, `scissoring`, `toy`, `analtoy`, `none`. With `DebugLog = true`, `OStrands.log` lists the actions of every scene that produced no strands.
 
-The built-in rigs cover:
 
-| | | | |
-|---|---|---|---|
-| bear | boar | canine | chaurus |
-| deer | draugr | falmer | gargoyle |
-| giant | goat | horker | horse |
-| mammoth | riekling | sabrecat | skeever |
-| troll | vampire lord | werewolf | |
+## Building from source
 
-The chaurus rig also covers spiders and reapers, and the giant rig also covers lurkers.
+Requires Visual Studio 2022 or newer (or the Build Tools) with the C++ desktop workload, C++ CMake tools and vcpkg, plus Git and Python 3.
 
-The Creatures toggle is also on the Strands page of the SKSE Menu Framework settings.
+```bat
+git clone --depth 1 --branch v12.1.0 https://github.com/alandtse/CommonLibSSE-NG extern/CommonLibSSE-NG
+build.cmd
+python tools\package.py
+```
 
-### Building
+The plugin is written to `build/release/0_OStrands.dll` and the release archive to `dist/`. The first build compiles CommonLibSSE-NG and takes a while. `tools/make_strand.py` regenerates the strand mesh and textures, `tools/make_fluid.py` the semen meshes and textures, and `tools/make_collision.py` the collision inspector's mesh and textures.
 
-1. Clone CommonLibSSE-NG into `extern/`:
-   ```
-   git clone --depth 1 --branch v12.1.0 https://github.com/alandtse/CommonLibSSE-NG extern/CommonLibSSE-NG
-   ```
-2. Run `build.cmd`. It needs Visual Studio's C++ build tools and vcpkg. The plugin is written to `build/release/0_OStrands.dll`.
-3. Run `package.cmd` to build the release zip in `dist/`. It contains only the plugin, `OStrands.ini`, the license and a notice; the meshes and textures in `data/` are left out because they come from the original mod.
+## License
 
-### Download
+GPL-3.0. `extern/ostim` contains OStim Standalone's plugin interface headers, unchanged and also under GPL-3.0; see `extern/ostim/NOTICE.txt`.
 
-Get the latest build from the [releases page](https://gitlab.com/Keevan2374/ostrands/-/releases).
+## Credits
 
-1. Install the original [OStrands](https://www.nexusmods.com/skyrimspecialedition/mods/195115) of the matching upstream version with your mod manager.
-2. Install this zip after it, and let it overwrite the original's `0_OStrands.dll` and `OStrands.ini`.
-
-### Versions
-
-Versions follow upstream OStrands with one extra number: `upstream.version.fork-revision`. For example, `0.8.0.2` is this fork's second release based on upstream 0.8.0. When upstream releases a new version, the fork is rebased onto it and the last number goes back to 1, so upstream 0.8.1 becomes `0.8.1.1`.
-
-### Changelog
-
-**0.8.0.6** (2026-11-20, personal build, based on upstream 0.8.0)
-- With Anatomica: a finish that starts inside his anus stays in him while the tip is near ([Anatomica] Hold), and only [Anatomica] Overflow (10%) spills out round the shaft - Anatomica lets the rest out later. Before, half spilled at once and the rest sprayed out whenever the animation pulled back, so most of it ended on the floor.
-- Its own stickiness / thickness for what Anatomica lets out of him ([Anatomica] OutStickiness 0.9, OutViscosity 70), separate from the schlong's spurts ([Semen] Stickiness); a Colossal Load clings more (x its thickness).
-- A Colossal Load is drawn bigger: its globs and ropes are scaled by its thickness (Anatomica's "Strand thickness", or [ColossalLoad] Radius / [Shape] Radius without Anatomica).
-
-**0.8.0.5** (2026-11-20, personal build, based on upstream 0.8.0)
-- What is handed to Anatomica is counted in normal loads: a Colossal Load (or a big OCum load) now counts as several, so he holds, gushes and squirts that much more.
-
-**0.8.0.4** (2026-11-20, personal build, based on upstream 0.8.0)
-- [CreatureSemen] / [CreatureShape] are now **Colossal Load** ([ColossalLoad]; the old sections are still read and moved on the next save). On by default, with bigger defaults.
-- Without Anatomica, a Colossal Load is for creatures only, and only when More Nasty Critters (MoreNastyCritters.esp) is loaded.
-- With Anatomica 2.6c+ and [Anatomica] Load on, Anatomica decides who gets one and how big (men by schlong size or a chance per scene; with More Nasty Critters, creatures by their type or group), as multipliers on [Semen] plus an optional colour.
-
-**0.8.0.3** (2026-11-19, personal build, based on upstream 0.8.0)
-
-- `[CreatureSemen]` and `[CreatureShape]`: creatures get their own load size, spurt strength, spurts, thickness, clumping, stretch, colour and strand thickness (menu: Semen > Creatures, Strands > Look).
-- `[Semen] Colour`: semen colour (0-255 RGB). Coloured semen uses a tinted copy of `semen.dds` that OStrands writes to `textures\OStrands\Tint` the first time a colour is used.
-- `[General] NoVaginaUsesAnus`: when a scene calls for vaginal but the receiver has no vagina, the anus is used.
-- `[Anatomica]`: with Anatomica 2.5w or newer the anus position is Anatomica's live hole, loads that go into an Anatomica anus are handed to Anatomica (which lets them back out through OStrands), and Anatomica's per-race cum colours are used.
-- Exports for other SKSE plugins: `OStrands_ApiVersion`, `OStrands_Emit(actor, stream, point[3], velocity[3] in units/s, count, rgb[3] or null)`, `OStrands_SemenOn`.
-
-**0.8.0.2** (2026-10-24, based on upstream 0.8.0)
-- A creature only has a penis while it wears an erect mesh. A soft creature no longer makes strands, semen or precum.
-- A creature whose skeleton matches no rig gets its penis bones from the erect mesh it wears.
-- OStim scenes keep creatures too, when `[Creatures] Enabled` is on.
-- A rig shaft radius of `0` now measures the shaft from the worn mesh.
-
-**0.8.0.1** (2026-10-23, based on upstream 0.8.0, released as `v0.8.0-creatures`)
-- Creatures in SexLab scenes, following each creature's own penis bones.
-- Built-in penis rigs for BakaFactory ABC skeletons, configurable under `[CreatureRigs]`.
-- Arousal precum for creatures.
-- `[Creatures] Enabled` setting and a Creatures toggle in the SKSE Menu Framework settings.
-
-### Credits
-
-- OStrands by LeonVanWinkle (Saint), with contributions from crajjjj.
-- Creature support by Keevan2374, with the erect-mesh check, mesh fallback and OStim creatures by crajjjj.
-- The built-in creature rigs are based on the BakaFactory ABC overrides that ship with PPA - Penetration Physics.
-
-### License
-
-GNU General Public License v3.0; see `LICENSE`. Release zips include the license and a notice naming the exact source commit.
-
-Source: https://gitlab.com/Keevan2374/ostrands
+- Bethesda
+- [OStim Standalone](https://github.com/VersuchDrei/OStimNG) by VersuchDrei and contributors
+- [CommonLibSSE-NG](https://github.com/alandtse/CommonLibSSE-NG)
+- SimpleIni and spdlog
+## Sloppy sex whatever the heck 
