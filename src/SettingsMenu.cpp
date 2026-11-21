@@ -399,11 +399,12 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Slider<float>>("Nose amount", "How much comes out of the nose (a Colossal Load is double).", &Settings::noseAmount, 0.1f, 4.0f, 0.05f, on));
 			page.push_back(std::make_unique<Toggle>("Kissing strings", "Strings of spit between the lips as a kiss parts.", &Settings::kissStrings, on));
 			page.push_back(std::make_unique<Toggle>("Snowballing", "A kiss passes cum held in one mouth into the other.", &Settings::snowball, on));
+			page.push_back(std::make_unique<Toggle>("Super messy", "Oral leaves far more: strings from all along both lips, webs of spit between the lips, twice the strings and spit on the shaft, and drool for twice as long after.", &Settings::superMessy, on));
 
 			page.push_back(std::make_unique<Heading>("Stains and splashes"));
 			page.push_back(std::make_unique<Toggle>("Stains and splashes", "Where a spurt lands outside a body it leaves a mark, through the game's own decals (like blood). How long they stay is the game's decal setting.", &Settings::stains, on));
 			page.push_back(std::make_unique<Toggle>("On clothes and armour", "A stain where it lands on someone dressed there.", &Settings::stainClothes, on));
-			page.push_back(std::make_unique<Toggle>("On walls, furniture and floors", "A splash where it lands in the world.", &Settings::stainWorld, on));
+			page.push_back(std::make_unique<Toggle>("On walls, furniture and floors", "A splash where it lands in the world. Experimental: on some setups the game draws these as plain squares - turn it off if you see that.", &Settings::stainWorld, on));
 			page.push_back(std::make_unique<Slider<float>>("Stain size", "x the size of stains and splashes.", &Settings::stainSize, 0.2f, 4.0f, 0.05f, on));
 			page.push_back(std::make_unique<Slider<float>>("Spurt reach", "x how far a spurt flies when working out where it lands (aim).", &Settings::stainArc, 0.2f, 3.0f, 0.05f, on));
 			page.push_back(std::make_unique<Slider<int>>("Stains a second", "At most this many new stains and splashes a second.", &Settings::stainsPerSecond, 1, 60, 1, on));

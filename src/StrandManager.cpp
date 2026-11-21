@@ -915,7 +915,8 @@ namespace OStrands
 		const auto& anchors = a_state.anchors;
 		const float depth = anchors.Depth(anchors.tip);
 		a_state.cooldown -= a_delta;
-		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * a_delta, kMaxBudget);
+		const bool messyMouth = settings.superMessy && OpeningOf(a_state.pair.act) == Opening::kMouth;   // 0.8.0.9
+		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * (messyMouth ? 2.0f : 1.0f) * a_delta, kMaxBudget);
 
 		// 0.8.0.8: precum strings - the tip touches the opening / lips and pulls away again without going in
 		if (!anchors.toy && settings.precumStrings) {
@@ -1056,7 +1057,27 @@ namespace OStrands
 			a_state.shaftSpit -= a_delta;
 			if (a_state.shaftSpit <= 0.0f) {
 				SpawnShaftSpit(a_state);
-				a_state.shaftSpit = std::max(std::exponential_distribution<float>(settings.spit / settings.dripInterval)(_rng), 0.5f);
+				a_state.shaftSpit = std::max(std::exponential_distribution<float>(settings.spit * (settings.superMessy ? 2.0f : 1.0f) / settings.dripInterval)(_rng), 0.4f);
+			}
+		}
+		// 0.8.0.9: super messy - webs of spit between his lips as he sucks (break after a few seconds)
+		if (settings.superMessy && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
+			a_state.webTimer -= a_delta;
+			if (a_state.webTimer <= 0.0f && EnsureMesh()) {
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				a_state.webTimer = (1.5f + 3.0f * unit(_rng)) / std::max(settings.spit, 0.2f);
+				const auto& lips = a_state.anchors.opening;   // 0 upper lip, 1 lower lip, 2 / 3 the corners
+				auto along = [&](std::size_t a_lip) {         // somewhere along that lip, towards a random corner
+					const std::size_t corner = unit(_rng) < 0.5f ? 2 : 3;
+					const float       t = unit(_rng) * 0.8f;
+					const RE::NiPoint3 at = lips[a_lip].World() * (1.0f - t) + lips[corner].World() * t;
+					return End{ RE::NiPointer<RE::NiAVObject>(lips[a_lip].node), lips[a_lip].node->world.Invert() * at };
+				};
+				if (Strand* web = AcquireStrand()) {
+					StartBetween(*web, Kind::kKiss, a_state, along(0), along(1), settings.StrandRadius(false) * (0.4f + 0.25f * unit(_rng)));
+					web->creature = false;
+					++_statBridges;
+				}
 			}
 		}
 		const bool    receiverDrips = opening == Opening::kMouth ? settings.oralDrips : !a_state.anchors.vulva.empty();
@@ -1160,9 +1181,10 @@ namespace OStrands
 		a_state.cooldown = settings.cooldown;
 
 		std::uniform_real_distribution<float> chance(0.0f, 1.0f);
-		int count = 1 + (chance(_rng) < 0.4f ? 1 : 0);
-		count = std::min({ count, static_cast<int>(a_state.bridgeBudget), settings.maxPerStroke,
-			settings.maxPerPair - Count(a_state.pair, Kind::kBridge) });
+		const bool messy = settings.superMessy && OpeningOf(a_state.pair.act) == Opening::kMouth;   // 0.8.0.9
+		int count = 1 + (chance(_rng) < 0.4f ? 1 : 0) + (messy ? 1 : 0);
+		count = std::min({ count, static_cast<int>(a_state.bridgeBudget), settings.maxPerStroke + (messy ? 1 : 0),
+			settings.maxPerPair * (messy ? 2 : 1) - Count(a_state.pair, Kind::kBridge) });
 
 		std::vector<Point> rims = anchors.opening;
 		std::ranges::shuffle(rims, _rng);
@@ -1408,7 +1430,7 @@ namespace OStrands
 		if (OpeningOf(act) == Opening::kMouth && settings.droolTime > 0.0f && settings.spit > 0.0f &&
 			!std::ranges::any_of(_lingering, [&](const Linger& a_linger) { return a_linger.actor == a_state.pair.receiver; })) {
 			// 0.8.0.8: drool strings keep coming from the corners of the mouth for a while
-			_lingering.push_back({ a_state.pair, Source::kReceiver, a_state.pair.receiver, settings.droolTime,
+			_lingering.push_back({ a_state.pair, Source::kReceiver, a_state.pair.receiver, settings.droolTime * (settings.superMessy ? 2.0f : 1.0f),
 				std::uniform_real_distribution<float>(0.3f, 1.5f)(_rng), true });
 		}
 		const bool giverVulva = act == Act::kTribbing || (IsPenis(act) && a_state.strapWearer && settings.wearerDrips);
@@ -1452,7 +1474,7 @@ namespace OStrands
 				}
 				SpawnDripAt(a_linger.pair, a_linger.source, root, { from }, 0.85f);
 				// and now and then a string that runs from that corner down the side of his chin
-				if (settings.spit > 0.0f && unit(_rng) < 0.5f && EnsureMesh()) {
+				if (settings.spit > 0.0f && unit(_rng) < (settings.superMessy ? 0.85f : 0.5f) && EnsureMesh()) {
 					if (Strand* run = AcquireStrand()) {
 						const RE::NiPoint3 corner = lips[c].World();
 						const RE::NiPoint3 upper = lips[0].World(), lower = lips[1].World();

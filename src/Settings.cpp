@@ -302,6 +302,7 @@ namespace OStrands
 			f("Oral", "FacialChance", &Settings::facialChance);
 			b("Oral", "KissStrings", &Settings::kissStrings);
 			b("Oral", "Snowball", &Settings::snowball);
+			b("Oral", "SuperMessy", &Settings::superMessy);
 			b("BeastForm", "People", &Settings::beastPeople);
 			b("BeastForm", "BigLoads", &Settings::beastBigLoads);
 			b("BeastForm", "KnotStrings", &Settings::knotStrings);
@@ -713,6 +714,7 @@ namespace OStrands
 		f("Oral", "FacialChance", facialChance);
 		b("Oral", "KissStrings", kissStrings);
 		b("Oral", "Snowball", snowball);
+		b("Oral", "SuperMessy", superMessy);
 		b("BeastForm", "People", beastPeople);
 		b("BeastForm", "BigLoads", beastBigLoads);
 		b("BeastForm", "KnotStrings", knotStrings);

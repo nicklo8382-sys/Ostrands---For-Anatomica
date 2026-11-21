@@ -112,6 +112,7 @@ namespace OStrands
 			float   giverDrip{ -1.0f };
 			bool    wasIn{ false };   // 0.8.0.7: the tip was inside (strings when it slides out)
 			float   shaftSpit{ 1.0f };   // 0.8.0.8: seconds to the next spit drip off the shaft
+			float   webTimer{ 1.0f };    // 0.8.0.9: super messy - seconds to the next spit web between the lips
 			float   precumTimer{ -1.0f };   // 0.8.0.8
 			bool    touched{ false };       // 0.8.0.8: the tip is touching the opening (precum strings when it pulls away)
 		};

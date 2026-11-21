@@ -134,6 +134,7 @@ namespace OStrands
 		float facialChance{ 0.2f };  // 0.8.0.8: chance a finish in the mouth pulls out onto the face instead
 		bool  kissStrings{ true };   // 0.8.0.8: spit strings between the lips as a kiss parts
 		bool  snowball{ true };      // 0.8.0.8: a kiss passes cum held in one mouth to the other
+		bool  superMessy{ false };   // 0.8.0.9: more strings round the mouth and on the shaft (lips, spit webs, drool)
 		bool  beastPeople{ true };   // 0.8.0.8: OStim Beast Form - werewolf / werebear / Vampire Lord forms count as people
 		bool  beastBigLoads{ true }; // 0.8.0.8: follow Beast Form's "Big loads" (a Colossal Load for werewolves and werebears)
 		bool  knotStrings{ true };   // 0.8.0.8: a knot pulling out - more, thicker strings and a gush
@@ -154,7 +155,7 @@ namespace OStrands
 		float lordSun{ 3.0f };       // 0.8.0.8: out in the sun it dries off a Vampire Lord this much faster (1 = off)
 		bool  stains{ true };        // 0.8.0.8: where a spurt lands outside the body it leaves a decal
 		bool  stainClothes{ true };  //   ... on someone's clothes / armour (dressed there)
-		bool  stainWorld{ true };    //   ... on walls, furniture and the floor
+		bool  stainWorld{ false };   //   ... on walls, furniture and the floor (0.8.0.9: off - drawn as squares on some setups)
 		float stainSize{ 1.0f };     //   ... x its size
 		int   stainsPerSecond{ 6 };  //   ... at most this many a second
 		float stainArc{ 1.0f };      // 0.8.0.8: x how far a spurt flies for the stain trace (aim)

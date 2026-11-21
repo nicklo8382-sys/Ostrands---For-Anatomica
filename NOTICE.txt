@@ -1,6 +1,6 @@
 OStrands by LeonVanWinkle (Saint), with contributions from crajjjj.
 
-This is a modified version of OStrands 0.8.0, released as 0.8.0.8 and packaged with Anatomica - Anatomical Anus for HIMBO
+This is a modified version of OStrands 0.8.0, released as 0.8.0.9 and packaged with Anatomica - Anatomical Anus for HIMBO
 (optional installer option). It is
 distributed under the GNU General Public License version 3; see
 OStrands-LICENSE.txt.
@@ -58,9 +58,21 @@ Modifications:
     full opening on deep thrusts and on going in again.
   - OStim Beast Form support ([BeastForm]): beast forms count as people,
     its "Big loads" option read from its script, knot strings, wider beast
-    mouths, fur cling, knot hold, tongue drool.
+    mouths, fur cling, knot hold, tongue drool; Vampire Lords: their own big
+    load, drool from the mouth, blood-dark cum, cold thin cum, drips off while
+    hovering, strands snap when they burst into bats, red drool, fang strings,
+    faster drying in the sun.
   - Stains and splashes (decals via BGSDecalManager), rain / water washing,
     nose overflow at a mouth finish; decal textures in textures\OStrands\decals.
+- 0.8.0.9, personal build (Claude for Riotguards), 2026-11-21:
+  - Stains: decals alpha-tested and one splat per texture (no more squares
+    on the floor).
+  - The mouth: drool from one corner at a time and strings down the side of
+    the chin; dribbles alternate corners and slide down the chin, let go at
+    the jaw; after the scene most of what is left is swallowed.
+  - No identifiers named near/far (windows.h macros).
+  - [Oral] SuperMessy: more strings round the lips, spit webs between them,
+    more on the shaft, longer drool. World stains off by default ([Stains] World).
 
 Source code: the complete source of this build is linked on the
 Anatomica mod page (Permissions and credits). Upstream fork: https://gitlab.com/Keevan2374/ostrands
