@@ -1,5 +1,6 @@
 #include "Hooks.h"
 
+#include "Anatomy.h"
 #include "Arousal.h"
 #include "Body.h"
 #include "FluidManager.h"
@@ -74,6 +75,7 @@ namespace OStrands::Hooks
 				}
 				const float delta = RE::GetSecondsSinceLastFrame() * static_cast<float>(std::min(passed, kMaxCatchUp));
 				Body::BeginFrame(delta);
+				Anatomy::TickLips();
 				SexLabBridge::Update(delta);
 				Arousal::Update(delta);
 				StrandManager::Get().Update(delta);

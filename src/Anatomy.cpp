@@ -6,6 +6,12 @@
 
 #include <unordered_map>
 
+#include <bit>
+
+#include <mutex>
+
+#include <format>
+
 namespace OStrands
 {
 	std::string_view ActName(Act a_act)
@@ -326,6 +332,219 @@ namespace OStrands
 			return true;
 		}
 
+		// 0.8.0.9: live lips. The SMP Head lip bones stay where the closed mouth is when an expression opens it (the face
+		// morphs move the skin, not the bones), so strings hung from them floated over the open mouth. Each lip bone gets the
+		// face vertex nearest to it, and a node of ours under the head follows that vertex every frame (morphs, DeepFit's
+		// pushes and all); the strings and drips hang from those nodes.
+		namespace
+		{
+			constexpr std::uint32_t kFaceStride = 16;   // a face's dynamic positions: x, y, z, w
+
+			float HalfToFloat(std::uint16_t a_value)
+			{
+				const std::uint32_t sign = static_cast<std::uint32_t>(a_value & 0x8000u) << 16;
+				std::uint32_t       exponent = (a_value >> 10) & 0x1Fu;
+				std::uint32_t       mantissa = a_value & 0x3FFu;
+				if (exponent == 0) {
+					if (mantissa == 0) {
+						return std::bit_cast<float>(sign);
+					}
+					exponent = 113;
+					while (!(mantissa & 0x400u)) {
+						mantissa <<= 1;
+						--exponent;
+					}
+					mantissa &= 0x3FFu;
+				} else if (exponent == 31) {
+					return std::bit_cast<float>(sign | 0x7F800000u | (mantissa << 13));
+				} else {
+					exponent += 112;
+				}
+				return std::bit_cast<float>(sign | (exponent << 23) | (mantissa << 13));
+			}
+
+			struct LipTrack
+			{
+				RE::NiPointer<RE::NiAVObject>                   root;
+				RE::NiPointer<RE::BSGeometry>                   face;
+				RE::NiPointer<RE::NiAVObject>                   head;
+				std::array<std::uint32_t, 4>                    vertex{};
+				std::array<RE::NiPointer<RE::NiNode>, 4>        nodes;
+				bool                                            ok{ false };
+			};
+			std::mutex            lipLock;
+			std::vector<LipTrack> lipTracks;
+
+			// where a face vertex is now: its dynamic (morphed) position, skinned with its own bones
+			bool FaceVertexWorld(RE::BSGeometry* a_face, std::uint32_t a_vertex, RE::NiPoint3& a_out)
+			{
+				auto* shape = a_face ? a_face->AsDynamicTriShape() : nullptr;
+				auto* skin = a_face ? a_face->GetGeometryRuntimeData().skinInstance.get() : nullptr;
+				auto* partition = skin ? skin->skinPartition.get() : nullptr;
+				if (!shape || !skin || !skin->skinData || !skin->bones || !partition || partition->numPartitions == 0 ||
+					!partition->partitions[0].buffData || !partition->partitions[0].buffData->rawVertexData || a_vertex >= partition->vertexCount) {
+					return false;
+				}
+				auto& runtime = shape->GetDynamicTrishapeRuntimeData();
+				RE::NiPoint3 local;
+				{
+					RE::BSSpinLockGuard guard(runtime.lock);
+					if (!runtime.dynamicData || runtime.dataSize < partition->vertexCount * kFaceStride) {
+						return false;
+					}
+					std::array<float, 3> xyz{};
+					std::memcpy(xyz.data(), static_cast<const std::uint8_t*>(runtime.dynamicData) + static_cast<std::size_t>(a_vertex) * kFaceStride, sizeof(xyz));
+					local = { xyz[0], xyz[1], xyz[2] };
+				}
+				const auto&         first = partition->partitions[0];
+				const std::uint32_t stride = static_cast<std::uint32_t>(std::bit_cast<std::uint64_t>(first.vertexDesc) & 0xF) * 4;
+				const std::uint32_t skinning = first.vertexDesc.GetAttributeOffset(RE::BSGraphics::Vertex::VA_SKINNING);
+				if (stride == 0 || !first.vertexDesc.HasFlag(RE::BSGraphics::Vertex::VF_SKINNED) || skinning + 12 > stride) {
+					return false;
+				}
+				const std::uint8_t*          vertex = first.buffData->rawVertexData + static_cast<std::size_t>(a_vertex) * stride;
+				std::array<std::uint16_t, 4> halves{};
+				std::array<std::uint8_t, 4>  bones{};
+				std::memcpy(halves.data(), vertex + skinning, sizeof(halves));
+				std::memcpy(bones.data(), vertex + skinning + 8, sizeof(bones));
+				const std::uint32_t count = skin->skinData->bones;
+				RE::NiPoint3        sum;
+				float               total = 0.0f;
+				for (std::size_t j = 0; j < 4; ++j) {
+					const float w = HalfToFloat(halves[j]);
+					if (!(w > 0.0f) || bones[j] >= count || !skin->bones[bones[j]]) {
+						continue;
+					}
+					const RE::NiTransform t = skin->bones[bones[j]]->world * skin->skinData->GetBoneDataSkinToBone(bones[j]);
+					sum += (t * local) * w;
+					total += w;
+				}
+				if (total <= 0.0f) {
+					return false;
+				}
+				a_out = sum / total;
+				return true;
+			}
+
+			RE::BSGeometry* FaceOf(RE::NiAVObject* a_root)
+			{
+				RE::BSGeometry* best = nullptr;
+				std::uint32_t   most = 0;
+				RE::BSVisit::TraverseScenegraphGeometries(a_root, [&](RE::BSGeometry* a_geometry) {
+					auto* shape = a_geometry->AsDynamicTriShape();
+					auto* skin = a_geometry->GetGeometryRuntimeData().skinInstance.get();
+					auto* partition = skin ? skin->skinPartition.get() : nullptr;
+					if (shape && partition && partition->vertexCount > most && shape->GetDynamicTrishapeRuntimeData().dynamicData) {
+						best = a_geometry;
+						most = partition->vertexCount;
+					}
+					return RE::BSVisit::BSVisitControl::kContinue;
+				});
+				return best;
+			}
+
+			void PlaceLips(LipTrack& a_track)
+			{
+				auto* head = a_track.head.get();
+				if (!head) {
+					return;
+				}
+				const RE::NiTransform toHead = head->world.Invert();
+				for (std::size_t i = 0; i < 4; ++i) {
+					RE::NiPoint3 at;
+					auto*        node = a_track.nodes[i].get();
+					if (node && FaceVertexWorld(a_track.face.get(), a_track.vertex[i], at)) {
+						node->local.translate = toHead * at;
+						node->world = head->world * node->local;
+					}
+				}
+			}
+		}
+
+		// the four live lip nodes for this 3D (from its SMP Head lip bones), or all null
+		std::array<RE::NiAVObject*, 4> LiveLips(RE::NiAVObject* a_root, RE::NiAVObject* a_head, const std::array<RE::NiAVObject*, 4>& a_bones)
+		{
+			std::array<RE::NiAVObject*, 4> out{};
+			if (!a_root || !a_head || !a_bones[0]) {
+				return out;
+			}
+			std::scoped_lock guard(lipLock);
+			auto it = std::ranges::find_if(lipTracks, [&](const LipTrack& a_track) { return a_track.root.get() == a_root; });
+			if (it != lipTracks.end() && (!it->ok || it->head.get() != a_head || !it->face || !it->face->parent)) {
+				lipTracks.erase(it);
+				it = lipTracks.end();
+			}
+			if (it == lipTracks.end()) {
+				LipTrack track;
+				track.root = RE::NiPointer<RE::NiAVObject>(a_root);
+				track.head = RE::NiPointer<RE::NiAVObject>(a_head);
+				auto* face = FaceOf(a_root);
+				auto* skin = face ? face->GetGeometryRuntimeData().skinInstance.get() : nullptr;
+				auto* partition = skin ? skin->skinPartition.get() : nullptr;
+				auto* headNode = a_head->AsNode();
+				if (face && partition && headNode) {
+					track.face = RE::NiPointer<RE::BSGeometry>(face);
+					std::vector<RE::NiPoint3> where(partition->vertexCount);
+					std::vector<bool>         known(partition->vertexCount, false);
+					for (std::uint32_t v = 0; v < partition->vertexCount; ++v) {
+						known[v] = FaceVertexWorld(face, v, where[v]);
+					}
+					track.ok = true;
+					for (std::size_t i = 0; i < 4 && track.ok; ++i) {
+						const RE::NiPoint3 bone = a_bones[i]->world.translate;
+						float              best = 1e9f;
+						for (std::uint32_t v = 0; v < partition->vertexCount; ++v) {
+							if (known[v]) {
+								const float d = where[v].GetDistance(bone);
+								if (d < best) {
+									best = d;
+									track.vertex[i] = v;
+								}
+							}
+						}
+						if (best > 2.0f * a_head->world.scale) {
+							track.ok = false;   // no face vertex on that lip
+							break;
+						}
+						auto node = RE::NiPointer<RE::NiNode>(RE::NiNode::Create(0));
+						if (!node) {
+							track.ok = false;
+							break;
+						}
+						node->name = std::format("OStrandsLip{}", i);
+						headNode->AttachChild(node.get(), true);
+						track.nodes[i] = node;
+					}
+					if (track.ok) {
+						PlaceLips(track);
+					}
+				}
+				if (lipTracks.size() > 16) {
+					lipTracks.erase(lipTracks.begin());
+				}
+				lipTracks.push_back(std::move(track));
+				it = std::prev(lipTracks.end());
+			}
+			if (!it->ok) {
+				return out;
+			}
+			for (std::size_t i = 0; i < 4; ++i) {
+				out[i] = it->nodes[i].get();
+			}
+			return out;
+		}
+
+		void TickLips()
+		{
+			std::scoped_lock guard(lipLock);
+			std::erase_if(lipTracks, [](const LipTrack& a_track) { return !a_track.root || a_track.root->GetRefCount() <= 1; });
+			for (auto& track : lipTracks) {
+				if (track.ok) {
+					PlaceLips(track);
+				}
+			}
+		}
+
 		// 0.8.0.9: the SMP Head lip bones (upper centre, bottom centre, the two corners), or all null; FSMP may put a prefix
 		// in front of the names, so they are matched by their ending. Looked up once per 3D.
 		std::array<RE::NiAVObject*, 4> HeadLipBones(RE::NiAVObject* a_root, RE::NiAVObject* a_head)
@@ -422,7 +641,9 @@ namespace OStrands
 			}
 			// 0.8.0.9: a High Poly Head (SMP Head) has bones on its lips - the strings and drips hang from the real lips and
 			// corners (and move with them when DeepFit opens the mouth), not from points worked out from the head bone
-			if (const auto lips = HeadLipBones(a_root, head); lips[0]) {
+			if (const auto bones = HeadLipBones(a_root, head); bones[0]) {
+				const auto live = LiveLips(a_root, head, bones);
+				const auto& lips = live[0] ? live : bones;   // the lips as they are now (the bones where they are closed)
 				for (auto* bone : lips) {
 					a_points.push_back({ bone, {} });
 				}

@@ -83,6 +83,7 @@ namespace OStrands
 
 		bool        Collect(RE::NiAVObject* a_root, const std::vector<RE::BSFixedString>& a_names, std::vector<Point>& a_points, RE::NiPoint3& a_center);
 		bool        MouthSite(RE::NiAVObject* a_root, std::vector<Point>& a_points, RE::NiPoint3& a_center, RE::NiPoint3& a_forward);
+		void        TickLips();   // 0.8.0.9: the live lip nodes follow the face (every frame)
 		bool        VulvaSite(RE::NiAVObject* a_root, std::vector<Point>& a_points, RE::NiPoint3& a_center);
 		const char* FindOpening(RE::NiAVObject* a_root, Opening a_opening, std::vector<Point>& a_points, RE::NiPoint3& a_center, RE::NiPoint3& a_inward);
 
