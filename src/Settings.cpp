@@ -238,6 +238,7 @@ namespace OStrands
 			b("General", "Enabled", &Settings::enabled);
 			b("General", "DebugLog", &Settings::debugLog);
 			b("Creatures", "Enabled", &Settings::creatures);
+			b("SexLab", "SeparateOrgasms", &Settings::sexlabSeparate);
 			b("General", "NoVaginaUsesAnus", &Settings::noVaginaUsesAnus);
 			auto colour = [&](const char* section, const char* key, std::array<float, 3> Settings::* field) {
 				keep(section, key, FormatColour(this->*field) != FormatColour(d.*field), FormatColour(this->*field));
@@ -303,6 +304,11 @@ namespace OStrands
 			b("Oral", "KissStrings", &Settings::kissStrings);
 			b("Oral", "Snowball", &Settings::snowball);
 			b("Oral", "SuperMessy", &Settings::superMessy);
+			f("Oral", "MessyLipDrips", &Settings::messyLipDrips);
+			f("Oral", "MessyWebs", &Settings::messyWebs);
+			f("Oral", "MessyChin", &Settings::messyChin);
+			f("Oral", "MessyDrool", &Settings::messyDrool);
+			f("Oral", "MessyDripSize", &Settings::messyDripSize);
 			b("BeastForm", "People", &Settings::beastPeople);
 			b("BeastForm", "BigLoads", &Settings::beastBigLoads);
 			b("BeastForm", "KnotStrings", &Settings::knotStrings);
@@ -575,6 +581,7 @@ namespace OStrands
 		b("General", "Enabled", enabled);
 		b("General", "DebugLog", debugLog);
 		b("Creatures", "Enabled", creatures);
+		b("SexLab", "SeparateOrgasms", sexlabSeparate);
 		b("General", "NoVaginaUsesAnus", noVaginaUsesAnus);
 		auto colour = [&](const char* section, const char* key, std::array<float, 3>& value) {
 			const char* text = ini.GetValue(section, key, nullptr);
@@ -715,6 +722,11 @@ namespace OStrands
 		b("Oral", "KissStrings", kissStrings);
 		b("Oral", "Snowball", snowball);
 		b("Oral", "SuperMessy", superMessy);
+		f("Oral", "MessyLipDrips", messyLipDrips);
+		f("Oral", "MessyWebs", messyWebs);
+		f("Oral", "MessyChin", messyChin);
+		f("Oral", "MessyDrool", messyDrool);
+		f("Oral", "MessyDripSize", messyDripSize);
 		b("BeastForm", "People", beastPeople);
 		b("BeastForm", "BigLoads", beastBigLoads);
 		b("BeastForm", "KnotStrings", knotStrings);

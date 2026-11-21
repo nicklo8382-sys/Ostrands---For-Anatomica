@@ -26,6 +26,7 @@ namespace OStrands::SexLabBridge
 		constexpr float            kRepeat = 10.0f;
 		constexpr const char*      kThreadScript = "sslThreadController";
 		constexpr const char*      kCountFunction = "GetOrgasmCount";
+		constexpr const char*      kAliasScript = "sslActorAlias";   // 0.8.0.9: SLSO keeps each actor's orgasm count on his alias
 
 		namespace PPA
 		{
@@ -152,6 +153,8 @@ namespace OStrands::SexLabBridge
 			bool                                fromPPA{ false };
 			std::uint32_t                       serial{ 0 };
 			RE::BSTSmartPointer<RE::BSScript::Object> script;
+			std::vector<std::pair<RE::ActorHandle, RE::BSTSmartPointer<RE::BSScript::Object>>> aliases;   // 0.8.0.9: SLSO - each actor's sslActorAlias
+			bool                                looked{ false };
 			std::unordered_map<std::uint32_t, std::int32_t> orgasms;
 			std::unordered_map<std::uint32_t, float>        climaxed;
 			float                               climaxFrame{ -1.0f };
@@ -437,6 +440,41 @@ namespace OStrands::SexLabBridge
 			return counting == Counting::kYes ? script : RE::BSTSmartPointer<RE::BSScript::Object>{};
 		}
 
+		// 0.8.0.9: SexLab Separate Orgasms on classic SexLab - the thread has no GetOrgasmCount(actor), but each actor's
+		// sslActorAlias has GetOrgasmCount() and counts up the moment he climaxes. Only looked for when switched on.
+		std::vector<std::pair<RE::ActorHandle, RE::BSTSmartPointer<RE::BSScript::Object>>> AliasScripts(RE::FormID a_quest, bool a_debug)
+		{
+			std::vector<std::pair<RE::ActorHandle, RE::BSTSmartPointer<RE::BSScript::Object>>> out;
+			auto* quest = RE::TESForm::LookupByID<RE::TESQuest>(a_quest);
+			auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+			auto* policy = vm ? vm->GetObjectHandlePolicy() : nullptr;
+			if (!quest || !policy) {
+				return out;
+			}
+			for (auto* alias : quest->aliases) {
+				auto* ref = alias ? skyrim_cast<RE::BGSRefAlias*>(alias) : nullptr;
+				if (!ref) {
+					continue;
+				}
+				const auto it = quest->refAliasMap.find(ref->aliasID);
+				const auto reference = it != quest->refAliasMap.end() ? it->second.get() : RE::NiPointer<RE::TESObjectREFR>{};
+				auto*      actor = reference ? reference->As<RE::Actor>() : nullptr;
+				if (!actor) {
+					continue;
+				}
+				RE::BSTSmartPointer<RE::BSScript::Object> script;
+				if (!vm->FindBoundObject(policy->GetHandleForObject(RE::BGSRefAlias::VMTYPEID, ref), kAliasScript, script) || !script ||
+					!HasFunction(script->GetTypeInfo(), kCountFunction)) {
+					continue;
+				}
+				out.emplace_back(actor->GetHandle(), script);
+			}
+			if (a_debug) {
+				logger::info("SexLab Separate Orgasms: {} actor{} counted on their own", out.size(), out.size() == 1 ? "" : "s");
+			}
+			return out;
+		}
+
 		void Climax(Scene& a_scene, RE::ActorHandle a_actor, bool a_debug)
 		{
 			const auto key = a_actor.native_handle();
@@ -492,7 +530,7 @@ namespace OStrands::SexLabBridge
 
 		void Poll(Scene& a_scene)
 		{
-			if (!a_scene.script || (a_scene.waiting > 0 && clock - a_scene.polled < kPollTimeout) ||
+			if ((!a_scene.script && a_scene.aliases.empty()) || (a_scene.waiting > 0 && clock - a_scene.polled < kPollTimeout) ||
 				(a_scene.orgasmAt < 0.0f && clock - a_scene.polled < kPoll)) {
 				return;
 			}
@@ -511,8 +549,15 @@ namespace OStrands::SexLabBridge
 				}
 				eligible = true;
 				RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback(new CountCallback(a_scene.tid, a_scene.serial, handle, clock));
-				if (vm->DispatchMethodCall(a_scene.script, kCountFunction, RE::MakeFunctionArguments(actor.get()), callback)) {
-					++a_scene.waiting;
+				if (a_scene.script) {
+					if (vm->DispatchMethodCall(a_scene.script, kCountFunction, RE::MakeFunctionArguments(actor.get()), callback)) {
+						++a_scene.waiting;
+					}
+				} else {   // 0.8.0.9: SLSO - ask his own alias
+					const auto alias = std::ranges::find_if(a_scene.aliases, [&](const auto& a_entry) { return a_entry.first == handle; });
+					if (alias != a_scene.aliases.end() && vm->DispatchMethodCall(alias->second, kCountFunction, RE::MakeFunctionArguments(), callback)) {
+						++a_scene.waiting;
+					}
 				}
 			}
 			if (!eligible && a_scene.orgasmAt >= 0.0f) {
@@ -575,6 +620,10 @@ namespace OStrands::SexLabBridge
 					if (!scene->script) {
 						scene->script = CountingScript(event.quest);
 					}
+					if (!scene->script && Settings::Get().sexlabSeparate && (event.kind == Kind::kStart || !scene->looked || scene->aliases.empty())) {
+						scene->looked = true;   // 0.8.0.9: SLSO (actors can change between stages)
+						scene->aliases = AliasScripts(event.quest, debug);
+					}
 					auto actors = ActorsOf(event.quest);
 					if (debug && (event.kind == Kind::kStart || actors != scene->actors)) {
 						logger::info("SexLab thread {} {}: {}", event.tid, event.kind == Kind::kStart ? "started" : "changed", Names(actors));
@@ -588,7 +637,7 @@ namespace OStrands::SexLabBridge
 				if (scene == scenes.end()) {
 					break;
 				}
-				if (scene->script) {
+				if (scene->script || !scene->aliases.empty()) {
 					scene->orgasmAt = clock;
 					scene->answered = false;
 				} else {

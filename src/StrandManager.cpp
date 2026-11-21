@@ -1060,11 +1060,11 @@ namespace OStrands
 			}
 		}
 		// 0.8.0.9: super messy - webs of spit between his lips as he sucks (break after a few seconds)
-		if (settings.superMessy && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
+		if (settings.superMessy && settings.messyWebs > 0.0f && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
 			a_state.webTimer -= a_delta;
 			if (a_state.webTimer <= 0.0f && EnsureMesh()) {
 				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
-				a_state.webTimer = (1.5f + 3.0f * unit(_rng)) / std::max(settings.spit, 0.2f);
+				a_state.webTimer = (1.5f + 3.0f * unit(_rng)) / std::max(settings.spit * settings.messyWebs, 0.05f);
 				const auto& lips = a_state.anchors.opening;   // 0 upper lip, 1 lower lip, 2 / 3 the corners
 				auto along = [&](std::size_t a_lip) {         // somewhere along that lip, towards a random corner
 					const std::size_t corner = unit(_rng) < 0.5f ? 2 : 3;
@@ -1076,15 +1076,16 @@ namespace OStrands
 					StartBetween(*web, Kind::kKiss, a_state, along(0), along(1), settings.StrandRadius(false) * (0.4f + 0.25f * unit(_rng)));
 					web->creature = false;
 					++_statBridges;
+					++_statMessy[1];
 				}
 			}
 		}
 		// 0.8.0.9: super messy - spit drips off his lower lip and the corners of his mouth as he sucks (never the upper lip)
-		if (settings.superMessy && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
+		if (settings.superMessy && settings.messyLipDrips > 0.0f && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
 			a_state.lipDrip -= a_delta;
 			if (a_state.lipDrip <= 0.0f) {
 				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
-				a_state.lipDrip = std::max(std::exponential_distribution<float>(2.0f * settings.spit / settings.dripInterval)(_rng), 0.35f);
+				a_state.lipDrip = std::max(std::exponential_distribution<float>(2.0f * settings.spit * settings.messyLipDrips / settings.dripInterval)(_rng), 0.25f);
 				const auto&       lips = a_state.anchors.opening;   // 0 upper lip, 1 lower lip, 2 / 3 the corners
 				const float       r = unit(_rng);
 				const std::size_t corner = unit(_rng) < 0.5f ? 2 : 3;
@@ -1094,8 +1095,37 @@ namespace OStrands
 					const RE::NiPoint3 at = lips[1].World() * (1.0f - t) + lips[corner].World() * t;
 					from = Point{ lips[1].node, lips[1].node->world.Invert() * at };
 				}
-				SpawnDripAt(a_state.pair, Source::kReceiver, a_state.anchors.receiverRoot, { from }, 0.6f + 0.25f * unit(_rng), {},
+				const int before = _statDrips;
+				SpawnDripAt(a_state.pair, Source::kReceiver, a_state.anchors.receiverRoot, { from }, (0.6f + 0.25f * unit(_rng)) * settings.messyDripSize, {},
 					settings.dripMaxPerSource * 2);
+				if (_statDrips != before) {
+					++_statMessy[0];
+				}
+			}
+		}
+		// 0.8.0.9: super messy - a string of spit runs from his lower lip (off centre) down his chin as he sucks
+		if (settings.superMessy && settings.messyChin > 0.0f && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 &&
+			a_state.anchors.receiverRoot) {
+			a_state.chinRun -= a_delta;
+			if (a_state.chinRun <= 0.0f && EnsureMesh()) {
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				a_state.chinRun = std::max(std::exponential_distribution<float>(0.35f * settings.spit * settings.messyChin)(_rng), 1.0f);
+				const auto&        lips = a_state.anchors.opening;
+				const std::size_t  corner = unit(_rng) < 0.5f ? 2 : 3;
+				const float        t = 0.3f + 0.6f * unit(_rng);   // between the middle of his lower lip and that corner
+				const RE::NiPoint3 lower = lips[1].World(), upper = lips[0].World();
+				const RE::NiPoint3 from = lower * (1.0f - t) + lips[corner].World() * t;
+				RE::NiPoint3       down = lower - upper;
+				const float        h = std::max(down.Length(), 0.5f);
+				down = down / h;
+				const RE::NiPoint3 chin = from + down * (h * (1.8f + 1.2f * unit(_rng)));
+				if (Strand* run = AcquireStrand()) {
+					StartBetween(*run, Kind::kKiss, a_state, End{ RE::NiPointer<RE::NiAVObject>(lips[1].node), lips[1].node->world.Invert() * from },
+						End{ RE::NiPointer<RE::NiAVObject>(lips[1].node), lips[1].node->world.Invert() * chin }, settings.StrandRadius(false) * (0.4f + 0.2f * unit(_rng)));
+					run->creature = false;
+					++_statBridges;
+					++_statMessy[2];
+				}
 			}
 		}
 		const bool    receiverDrips = opening == Opening::kMouth ? settings.oralDrips : !a_state.anchors.vulva.empty();
@@ -1446,7 +1476,7 @@ namespace OStrands
 		if (OpeningOf(act) == Opening::kMouth && settings.droolTime > 0.0f && settings.spit > 0.0f &&
 			!std::ranges::any_of(_lingering, [&](const Linger& a_linger) { return a_linger.actor == a_state.pair.receiver; })) {
 			// 0.8.0.8: drool strings keep coming from the corners of the mouth for a while
-			_lingering.push_back({ a_state.pair, Source::kReceiver, a_state.pair.receiver, settings.droolTime * (settings.superMessy ? 2.0f : 1.0f),
+			_lingering.push_back({ a_state.pair, Source::kReceiver, a_state.pair.receiver, settings.droolTime * (settings.superMessy ? settings.messyDrool : 1.0f),
 				std::uniform_real_distribution<float>(0.3f, 1.5f)(_rng), true });
 		}
 		const bool giverVulva = act == Act::kTribbing || (IsPenis(act) && a_state.strapWearer && settings.wearerDrips);
@@ -2045,6 +2075,10 @@ namespace OStrands
 			if (_statTime >= 10.0f) {
 				logger::info("last {:.0f}s: {} bridge, {} contact and {} drip strand(s) spawned, {} active now, update cost {:.1f} us/frame",
 					_statTime, _statBridges, _statContacts, _statDrips, CountActive(), _statMicros / std::max(_statFrames, 1));
+				if (settings.superMessy && (_statMessy[0] + _statMessy[1] + _statMessy[2]) > 0) {   // 0.8.0.9
+					logger::info("super messy: {} lip drip(s), {} spit web(s), {} string(s) down the chin", _statMessy[0], _statMessy[1], _statMessy[2]);
+				}
+				_statMessy[0] = _statMessy[1] = _statMessy[2] = 0;
 				if (_statClosest < std::numeric_limits<float>::max()) {
 					logger::info("closest contact distance: {:.1f}, contact swing {:.1f}, stroke swing {:.1f}", _statClosest, _statSwing,
 						_statStroke);

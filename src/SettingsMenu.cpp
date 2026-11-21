@@ -369,6 +369,9 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Toggle>("Creatures",
 				"Include creatures in SexLab and OStim scenes and arousal precum, using the penis bones listed under [CreatureRigs] in OStrands.ini. Applies from the next stage.",
 				&Settings::creatures, on));
+			page.push_back(std::make_unique<Toggle>("SexLab Separate Orgasms",
+				"For SexLab Separate Orgasms on classic SexLab (P+ needs nothing): semen comes the moment each man climaxes, not all together at the last stage. Off: nothing is checked. On: only while a SexLab scene runs, twice a second. Applies from the next scene.",
+				&Settings::sexlabSeparate, on));
 
 			page.push_back(std::make_unique<Heading>("Strand types"));
 			page.push_back(std::make_unique<Toggle>("Crotch strands", "Strands between the bodies as they part after a thrust.", &Settings::crotch, on));
@@ -400,6 +403,14 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Toggle>("Kissing strings", "Strings of spit between the lips as a kiss parts.", &Settings::kissStrings, on));
 			page.push_back(std::make_unique<Toggle>("Snowballing", "A kiss passes cum held in one mouth into the other.", &Settings::snowball, on));
 			page.push_back(std::make_unique<Toggle>("Super messy", "Oral leaves far more round his mouth: spit drips off his lower lip and the corners of his mouth as he sucks, webs of spit between his lips, and drool for twice as long after. The shaft gets no more than usual.", &Settings::superMessy, on));
+			{
+				const auto messy = [] { return Settings::Get().enabled && Settings::Get().superMessy; };
+				page.push_back(std::make_unique<Slider<float>>("  Lip drips", "Super messy: how often spit drips off his lower lip and the corners of his mouth as he sucks. 0 = none.", &Settings::messyLipDrips, 0.0f, 3.0f, 0.1f, messy));
+				page.push_back(std::make_unique<Slider<float>>("  Drip size", "Super messy: how big those drips are.", &Settings::messyDripSize, 0.5f, 2.0f, 0.05f, messy));
+				page.push_back(std::make_unique<Slider<float>>("  Spit webs", "Super messy: how often webs of spit stretch between his lips. 0 = none.", &Settings::messyWebs, 0.0f, 3.0f, 0.1f, messy));
+				page.push_back(std::make_unique<Slider<float>>("  Down his chin", "Super messy: how often a string of spit runs from his lower lip down his chin as he sucks. 0 = none.", &Settings::messyChin, 0.0f, 3.0f, 0.1f, messy));
+				page.push_back(std::make_unique<Slider<float>>("  Drool after", "Super messy: drool keeps coming from the corners of his mouth for this many times the usual time.", &Settings::messyDrool, 1.0f, 4.0f, 0.1f, messy));
+			}
 
 			page.push_back(std::make_unique<Heading>("Stains and splashes"));
 			page.push_back(std::make_unique<Toggle>("Stains and splashes", "Where a spurt lands outside a body it leaves a mark, through the game's own decals (like blood). How long they stay is the game's decal setting.", &Settings::stains, on));

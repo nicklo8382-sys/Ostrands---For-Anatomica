@@ -34,6 +34,7 @@ namespace OStrands
 		bool  debugLog{ false };
 
 		bool                  creatures{ true };
+		bool                  sexlabSeparate{ false };   // 0.8.0.9: SexLab Separate Orgasms (classic SexLab, not P+): each man's own climax
 		std::vector<ShaftRig> rigs = DefaultRigs();
 		bool                  noVaginaUsesAnus{ true };
 
@@ -135,6 +136,11 @@ namespace OStrands
 		bool  kissStrings{ true };   // 0.8.0.8: spit strings between the lips as a kiss parts
 		bool  snowball{ true };      // 0.8.0.8: a kiss passes cum held in one mouth to the other
 		bool  superMessy{ false };   // 0.8.0.9: more strings round the mouth and on the shaft (lips, spit webs, drool)
+		float messyLipDrips{ 1.0f };   // 0.8.0.9: super messy - how often spit drips off his lower lip and corners (x)
+		float messyWebs{ 1.0f };       //   spit webs between his lips (x)
+		float messyChin{ 1.0f };       //   strings from his lower lip down his chin as he sucks (x)
+		float messyDrool{ 2.0f };      //   drool after, x the usual time
+		float messyDripSize{ 1.0f };   //   size of the lip drips
 		bool  beastPeople{ true };   // 0.8.0.8: OStim Beast Form - werewolf / werebear / Vampire Lord forms count as people
 		bool  beastBigLoads{ true }; // 0.8.0.8: follow Beast Form's "Big loads" (a Colossal Load for werewolves and werebears)
 		bool  knotStrings{ true };   // 0.8.0.8: a knot pulling out - more, thicker strings and a gush

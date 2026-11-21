@@ -114,6 +114,7 @@ namespace OStrands
 			float   shaftSpit{ 1.0f };   // 0.8.0.8: seconds to the next spit drip off the shaft
 			float   webTimer{ 1.0f };    // 0.8.0.9: super messy - seconds to the next spit web between the lips
 			float   lipDrip{ 0.8f };     // 0.8.0.9: super messy - seconds to the next drip off his lower lip or a corner
+			float   chinRun{ 2.0f };     // 0.8.0.9: super messy - seconds to the next string down his chin
 			float   precumTimer{ -1.0f };   // 0.8.0.8
 			bool    touched{ false };       // 0.8.0.8: the tip is touching the opening (precum strings when it pulls away)
 		};
@@ -279,6 +280,7 @@ namespace OStrands
 		int    _statBridges{ 0 };
 		int    _statContacts{ 0 };
 		int    _statDrips{ 0 };
+		int    _statMessy[3]{ 0, 0, 0 };   // 0.8.0.9: super messy lip drips, webs, chin strings
 		float  _statClosest{ std::numeric_limits<float>::max() };
 		float  _statStroke{ 0.0f };
 		float  _statSwing{ 0.0f };
