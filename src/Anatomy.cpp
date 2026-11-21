@@ -326,6 +326,71 @@ namespace OStrands
 			return true;
 		}
 
+		// 0.8.0.9: the SMP Head lip bones (upper centre, bottom centre, the two corners), or all null; FSMP may put a prefix
+		// in front of the names, so they are matched by their ending. Looked up once per 3D.
+		std::array<RE::NiAVObject*, 4> HeadLipBones(RE::NiAVObject* a_root, RE::NiAVObject* a_head)
+		{
+			struct Cached { std::array<RE::NiPointer<RE::NiAVObject>, 4> bones; int none{ 0 }; };   // none: calls left before looking again (a head can change)
+			static std::unordered_map<RE::NiAVObject*, Cached> cache;
+			std::array<RE::NiAVObject*, 4> out{};
+			auto rooted = [&](RE::NiAVObject* a_node) {
+				for (auto* n = a_node; n; n = n->parent) {
+					if (n == a_root) {
+						return true;
+					}
+				}
+				return false;
+			};
+			if (auto it = cache.find(a_root); it != cache.end()) {
+				if (it->second.none > 0) {
+					--it->second.none;
+					return out;
+				}
+				if (it->second.bones[0] && rooted(it->second.bones[0].get())) {
+					for (std::size_t i = 0; i < 4; ++i) {
+						out[i] = it->second.bones[i].get();
+					}
+					return out;
+				}
+				cache.erase(it);
+			}
+			if (cache.size() > 64) {
+				cache.clear();
+			}
+			static constexpr std::string_view kEnds[4] = { "Upper Lip Center", "Bottom Lip Center", "Corner Lip Right", "Corner Lip Left" };
+			std::array<RE::NiAVObject*, 4> found{};
+			std::function<void(RE::NiAVObject*)> walk = [&](RE::NiAVObject* a_node) {
+				if (!a_node) {
+					return;
+				}
+				const std::string_view name = a_node->name.c_str() ? a_node->name.c_str() : "";
+				for (std::size_t i = 0; i < 4; ++i) {
+					if (!found[i] && name.ends_with(kEnds[i])) {
+						found[i] = a_node;
+					}
+				}
+				if (auto* node = a_node->AsNode()) {
+					for (auto& child : node->GetChildren()) {
+						walk(child.get());
+					}
+				}
+			};
+			walk(a_head ? a_head : a_root);
+			if (!(found[0] && found[1] && found[2] && found[3]) && a_head) {
+				found = {};
+				walk(a_root);
+			}
+			Cached& c = cache[a_root];
+			if (!(found[0] && found[1] && found[2] && found[3])) {
+				c.none = 600;
+				return out;
+			}
+			for (std::size_t i = 0; i < 4; ++i) {
+				c.bones[i] = RE::NiPointer<RE::NiAVObject>(found[i]);
+			}
+			return found;
+		}
+
 		bool MouthSite(RE::NiAVObject* a_root, std::vector<Point>& a_points, RE::NiPoint3& a_center, RE::NiPoint3& a_forward)
 		{
 			const auto& names = Names::Get();
@@ -355,6 +420,14 @@ namespace OStrands
 					fangs = form == 3 && settings.lordFangs;
 				}
 			}
+			// 0.8.0.9: a High Poly Head (SMP Head) has bones on its lips - the strings and drips hang from the real lips and
+			// corners (and move with them when DeepFit opens the mouth), not from points worked out from the head bone
+			if (const auto lips = HeadLipBones(a_root, head); lips[0]) {
+				for (auto* bone : lips) {
+					a_points.push_back({ bone, {} });
+				}
+				a_center = (lips[0]->world.translate + lips[1]->world.translate) * 0.5f;
+			} else
 			for (const RE::NiPoint3& offset : { up * (settings.lipHeight * std::sqrt(muzzle)), up * (-settings.lipHeight * std::sqrt(muzzle)), right * (settings.lipWidth * muzzle), right * (-settings.lipWidth * muzzle) }) {
 				a_points.push_back({ head, toHead * (a_center + offset) });
 			}
