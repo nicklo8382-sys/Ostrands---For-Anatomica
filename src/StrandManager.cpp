@@ -1441,12 +1441,36 @@ namespace OStrands
 				if (!MouthSite(root, lips, center, forward) || lips.size() < 4) {
 					return true;
 				}
-				std::vector<Point> corners{ lips[2], lips[3] };
-				if (lips.size() >= 6) {   // 0.8.0.8: a Vampire Lord's fangs
-					corners.push_back(lips[4]);
-					corners.push_back(lips[5]);
+				// 0.8.0.8: one corner at a time - both sides, the lower one a little more often (it used to drip between the two
+				// lowest points, so always from about the same place)
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				const bool rightLower = lips[2].World().z <= lips[3].World().z;
+				const std::size_t c = (unit(_rng) < 0.65f) == rightLower ? 2 : 3;
+				Point from = lips[c];
+				if (lips.size() >= 6 && unit(_rng) < 0.3f) {   // a Vampire Lord's fang on that side
+					from = lips[c == 2 ? 4 : 5];
 				}
-				SpawnDripAt(a_linger.pair, a_linger.source, root, corners, 0.85f);
+				SpawnDripAt(a_linger.pair, a_linger.source, root, { from }, 0.85f);
+				// and now and then a string that runs from that corner down the side of his chin
+				if (settings.spit > 0.0f && unit(_rng) < 0.5f && EnsureMesh()) {
+					if (Strand* run = AcquireStrand()) {
+						const RE::NiPoint3 corner = lips[c].World();
+						const RE::NiPoint3 upper = lips[0].World(), lower = lips[1].World();
+						RE::NiPoint3       down = lower - upper;
+						const float        h = std::max(down.Length(), 0.5f);
+						down = down / h;
+						const RE::NiPoint3 chin = corner + down * (h * (2.0f + unit(_rng))) + (lower - corner) * 0.2f;
+						PairState state;
+						state.pair = a_linger.pair;
+						state.anchors.receiverRoot = root;
+						StartBetween(*run, Kind::kKiss, state, End{ RE::NiPointer<RE::NiAVObject>(lips[c].node), lips[c].local },
+							End{ RE::NiPointer<RE::NiAVObject>(lips[c].node), lips[c].node->world.Invert() * chin },
+							settings.StrandRadius(false) * (0.45f + 0.2f * unit(_rng)));
+						run->creature = false;
+						run->owner = a_linger.actor;
+						++_statBridges;
+					}
+				}
 				const float left = std::max(a_linger.remaining / std::max(settings.droolTime, 0.01f), 0.2f);
 				a_linger.timer = std::max(std::exponential_distribution<float>(left * std::max(settings.spit, 0.1f) / settings.dripInterval)(_rng), 0.5f);
 				return false;

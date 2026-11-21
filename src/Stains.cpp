@@ -46,7 +46,10 @@ namespace OStrands::Stains
 					decal->data.shininess = 40.0f;
 					decal->data.parallaxScale = 0.0f;
 					decal->data.parallaxPasses = 0;
-					decal->data.flags = RE::DECAL_DATA_DATA::Flag::kAlphaBlending;
+					// alpha-tested as well as blended (a world decal ignored blending alone and drew the whole square), and one splat
+					// per texture (without kNoSubtextures the game takes a quarter of it, as vanilla decals are 2x2 sheets)
+					decal->data.flags = static_cast<RE::DECAL_DATA_DATA::Flag>(RE::DECAL_DATA_DATA::Flag::kAlphaBlending | RE::DECAL_DATA_DATA::Flag::kAlphaTesting |
+						RE::DECAL_DATA_DATA::Flag::kNoSubtextures);
 					decal->data.color = RE::Color{ 255, 255, 255, 255 };
 					set->decalData = decal;
 					g_sets[i] = set;
@@ -130,7 +133,7 @@ namespace OStrands::Stains
 			data.colorG = a_colour[1];
 			data.colorB = a_colour[2];
 			data.alphaBlending = 1;
-			data.alphaTesting = 0;
+			data.alphaTesting = 1;   // 0.8.0.8: the floor drew whole squares without it
 			manager->ApplyDecal(data, true, nullptr);
 		}
 	}

@@ -163,6 +163,8 @@ namespace OStrands
 			bool                         plugged{ true };
 			std::uint32_t                domain{ 0 };
 			std::uint32_t                run{ 0 };
+			std::uint32_t                side{ 0 };   // 0.8.0.8: which corner of the mouth it dribbles from (turns about)
+			bool                         swallowedAfter{ false };   // 0.8.0.8: out of the scene he swallowed most of what was left
 			int                          glob{ 0 };
 			float                        globSpeed{ 1.0f };
 			float                        phase{ 0.0f };
@@ -205,6 +207,8 @@ namespace OStrands
 			bool                           incompleteReported{ false };
 			bool                           creature{ false };
 			bool                           custom{ false };   // 0.8.0.4: flows like the first load that coloured it
+			struct MouthRun { RE::ActorHandle actor; float born{ 0.0f }; };
+			std::unordered_map<std::uint32_t, MouthRun> mouthRuns;   // 0.8.0.8: dribbles from a mouth corner (let go at the jaw)
 			SemenProfile                   profile;
 			float                          size{ 1.0f };   // 0.8.0.6: globs and ropes drawn this much bigger
 			float                          stick{ -1.0f }; // 0.8.0.6: its own stickiness (-1 = [Semen] Stickiness)
@@ -226,6 +230,7 @@ namespace OStrands
 		bool        Attach(Domain& a_domain);
 		void        Simulate(Domain& a_domain, float a_delta);
 		void        SampleGround(Domain& a_domain);
+		void        ReleaseMouthRuns(Domain& a_domain);   // 0.8.0.8
 		void        Expire(Domain& a_domain, float a_delta);
 		void        Draw(Domain& a_domain);
 		void        Watch(Domain& a_domain, const Fluid::Run& a_run);

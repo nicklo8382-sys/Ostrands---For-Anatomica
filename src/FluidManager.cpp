@@ -1159,7 +1159,7 @@ namespace OStrands
 		const RE::NiPoint3 outward = -inward;
 		RE::NiPoint3       exit = center + outward * kExitDepth;
 		if (mouth && rim.size() >= 4 && a_reservoir.gush < 1.0f) {   // 0.8.0.8: it dribbles out of a corner of the mouth (they take turns)
-			exit = rim[2 + (a_reservoir.run & 1u)].World() + outward * 0.15f;
+			exit = rim[2 + (a_reservoir.side & 1u)].World() + outward * 0.03f;   // right at the corner, on his skin, so it runs down his chin
 		}
 		const auto         plug = a_reservoir.plug.get();
 		const bool         plugged = !dressed && TipInside(plug.get(), center, inward);
@@ -1220,6 +1220,17 @@ namespace OStrands
 		const float pulse = 0.25f + 1.5f * wave * wave;
 		float       rate = (plugged ? a_reservoir.volume * kSeep : a_reservoir.volume * kLeak * facing) * pulse;
 		if (mouth) {
+			// 0.8.0.8: once the scene is over he swallows most of what is left; only a few small dribbles get out
+			if (!a_reservoir.swallowedAfter && !InScene(a_reservoir.actor) && a_reservoir.volume + a_reservoir.gush > 4.0f) {
+				a_reservoir.swallowedAfter = true;
+				const float gone = a_reservoir.volume * 0.75f + a_reservoir.gush * 0.6f;
+				a_reservoir.volume *= 0.25f;
+				a_reservoir.gush *= 0.4f;
+				AnatomicaBridge::Swallow(actor.get(), nullptr, 0.3f);   // a gulp or two (Anatomica)
+				if (settings.debugLog) {
+					logger::info("{} swallows {:.0f} after the scene; {:.0f} left to dribble", actor->GetDisplayFullName(), gone, a_reservoir.volume + a_reservoir.gush);
+				}
+			}
 			rate *= settings.dribble;
 			std::uniform_real_distribution<float> roll(0.0f, 1.0f);
 			if (!plugged && settings.cough > 0.0f && a_reservoir.volume >= 40.0f && roll(_rng) < settings.cough * a_delta) {   // a cough
@@ -1271,7 +1282,14 @@ namespace OStrands
 			}
 			if (a_reservoir.glob <= 0) {
 				a_reservoir.run = ++_nextRun;
-				a_reservoir.glob = std::uniform_int_distribution<int>(kGlobMin, kGlobMax)(_rng);
+				if (std::uniform_real_distribution<float>(0.0f, 1.0f)(_rng) < 0.6f) {   // 0.8.0.8: a new trickle - usually from the other corner
+					++a_reservoir.side;
+				}
+				a_reservoir.glob = mouth && a_reservoir.swallowedAfter ? std::uniform_int_distribution<int>(3, 9)(_rng) :   // 0.8.0.8: small dribbles
+				                                                         std::uniform_int_distribution<int>(kGlobMin, kGlobMax)(_rng);
+				if (mouth && a_reservoir.gush < 1.0f) {
+					domain->mouthRuns[a_reservoir.run] = { a_reservoir.actor, domain->age };
+				}
 				a_reservoir.globSpeed = 0.5f + 0.8f * unit(_rng);
 			}
 			--a_reservoir.glob;
@@ -1517,6 +1535,43 @@ namespace OStrands
 			a_domain.accumulator = 0.0f;
 		}
 		std::erase_if(a_domain.anchors, [](const Fluid::Anchor& a_anchor) { return a_anchor.rest <= 0.0f; });
+		ReleaseMouthRuns(a_domain);
+	}
+
+	// 0.8.0.8: a dribble from a corner of the mouth clings for a moment, then lets go and drips off the side of his jaw
+	// (left to the skin it ran down to the lowest point, the middle of his chin, and poured off there)
+	void FluidManager::ReleaseMouthRuns(Domain& a_domain)
+	{
+		if (a_domain.mouthRuns.empty()) {
+			return;
+		}
+		constexpr float kCling = 0.45f;   // seconds on the skin before it lets go
+		for (auto& particle : a_domain.particles) {
+			if (!particle.touching) {
+				continue;
+			}
+			auto it = a_domain.mouthRuns.find(particle.run);
+			if (it == a_domain.mouthRuns.end() || a_domain.age - it->second.born < kCling) {
+				continue;
+			}
+			const auto actor = it->second.actor.get();
+			auto*      root = actor ? actor->Get3D(false) : nullptr;
+			auto*      head = root ? root->GetObjectByName(Names::Get().head) : nullptr;
+			if (!head) {
+				continue;
+			}
+			Fluid::Vec3 away = particle.position - ToLocal(a_domain, head->world.translate);
+			if (Fluid::Dot(away, away) > (16.0f / kUnitsPerMeter) * (16.0f / kUnitsPerMeter) * root->world.scale * root->world.scale) {
+				continue;   // only on his face and jaw - where it lands (his chest, the floor) it stays
+			}
+			away.z = 0.0f;
+			const float length = std::sqrt(Fluid::Dot(away, away));
+			away = length > 1e-5f ? away * (1.0f / length) : Fluid::Vec3{ 0.0f, 0.0f, 0.0f };
+			particle.touching = false;
+			particle.surface = -1;
+			particle.velocity += away * 0.35f + Fluid::Vec3{ 0.0f, 0.0f, -0.15f };
+		}
+		std::erase_if(a_domain.mouthRuns, [&](const auto& a_entry) { return a_domain.age - a_entry.second.born > 20.0f; });
 	}
 
 	void FluidManager::SampleGround(Domain& a_domain)
