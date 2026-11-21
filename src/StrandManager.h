@@ -113,6 +113,7 @@ namespace OStrands
 			bool    wasIn{ false };   // 0.8.0.7: the tip was inside (strings when it slides out)
 			float   shaftSpit{ 1.0f };   // 0.8.0.8: seconds to the next spit drip off the shaft
 			float   webTimer{ 1.0f };    // 0.8.0.9: super messy - seconds to the next spit web between the lips
+			float   lipDrip{ 0.8f };     // 0.8.0.9: super messy - seconds to the next drip off his lower lip or a corner
 			float   precumTimer{ -1.0f };   // 0.8.0.8
 			bool    touched{ false };       // 0.8.0.8: the tip is touching the opening (precum strings when it pulls away)
 		};
@@ -226,7 +227,7 @@ namespace OStrands
 		void        SpawnSurface(PairState& a_state, const SurfaceSettings& a_surface);
 		void        SpawnDrip(PairState& a_state, Source a_source);
 		void        SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale = 1.0f,
-			const std::string& a_tint = {});
+			const std::string& a_tint = {}, int a_cap = -1);
 		void        Retexture(Strand& a_strand);   // 0.8.0.8
 		void        TickBats(float a_delta);       // 0.8.0.8: a Vampire Lord bursting into bats snaps his strands
 		void        BeginLinger(const PairState& a_state);

@@ -399,7 +399,7 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Slider<float>>("Nose amount", "How much comes out of the nose (a Colossal Load is double).", &Settings::noseAmount, 0.1f, 4.0f, 0.05f, on));
 			page.push_back(std::make_unique<Toggle>("Kissing strings", "Strings of spit between the lips as a kiss parts.", &Settings::kissStrings, on));
 			page.push_back(std::make_unique<Toggle>("Snowballing", "A kiss passes cum held in one mouth into the other.", &Settings::snowball, on));
-			page.push_back(std::make_unique<Toggle>("Super messy", "Oral leaves far more: strings from all along both lips, webs of spit between the lips, twice the strings and spit on the shaft, and drool for twice as long after.", &Settings::superMessy, on));
+			page.push_back(std::make_unique<Toggle>("Super messy", "Oral leaves far more round his mouth: spit drips off his lower lip and the corners of his mouth as he sucks, webs of spit between his lips, and drool for twice as long after. The shaft gets no more than usual.", &Settings::superMessy, on));
 
 			page.push_back(std::make_unique<Heading>("Stains and splashes"));
 			page.push_back(std::make_unique<Toggle>("Stains and splashes", "Where a spurt lands outside a body it leaves a mark, through the game's own decals (like blood). How long they stay is the game's decal setting.", &Settings::stains, on));

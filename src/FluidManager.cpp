@@ -1159,7 +1159,14 @@ namespace OStrands
 		const RE::NiPoint3 outward = -inward;
 		RE::NiPoint3       exit = center + outward * kExitDepth;
 		if (mouth && rim.size() >= 4 && a_reservoir.gush < 1.0f) {   // 0.8.0.8: it dribbles out of a corner of the mouth (they take turns)
-			exit = rim[2 + (a_reservoir.side & 1u)].World() + outward * 0.03f;   // right at the corner, on his skin, so it runs down his chin
+			// 0.8.0.9: just outside the corner (out from his lips and a little to that side), so it drips off the corner and
+			// falls instead of running down the skin to the middle of his chin and pouring off there
+			const RE::NiPoint3 corner = rim[2 + (a_reservoir.side & 1u)].World();
+			RE::NiPoint3       aside = corner - center;
+			aside -= outward * aside.Dot(outward);
+			const float        span = aside.Length();
+			aside = span > 1e-4f ? aside / span : RE::NiPoint3{};
+			exit = corner + outward * 0.45f + aside * 0.25f;
 		}
 		const auto         plug = a_reservoir.plug.get();
 		const bool         plugged = !dressed && TipInside(plug.get(), center, inward);
@@ -1296,7 +1303,7 @@ namespace OStrands
 			const RE::NiPoint3 wobble = (side * (unit(_rng) - 0.5f) + lift * (unit(_rng) - 0.5f)) * 0.4f;
 			RE::NiPoint3 velocity = Normalized(outward + wobble, outward) * (kLeakSpeed * a_reservoir.globSpeed) + carried * 0.5f;
 			if (mouth && a_reservoir.gush < 1.0f) {   // 0.8.0.8: a slow dribble that runs down the chin
-				velocity = Normalized(outward * 0.35f + RE::NiPoint3{ 0.0f, 0.0f, -1.0f } + wobble * 0.3f, outward) * (kLeakSpeed * 0.45f) + carried * 0.5f;
+				velocity = Normalized(outward * 0.6f + RE::NiPoint3{ 0.0f, 0.0f, -1.0f } + wobble * 0.3f, outward) * (kLeakSpeed * 0.45f) + carried * 0.5f;   // 0.8.0.9: clear of his chin
 			}
 			const float        turn = unit(_rng) * 2.0f * std::numbers::pi_v<float>;
 			const RE::NiPoint3 disc = (side * std::cos(turn) + lift * std::sin(turn)) * (kGlobDisc * kSpacing * kUnitsPerMeter * std::sqrt(unit(_rng)));
@@ -1545,7 +1552,7 @@ namespace OStrands
 		if (a_domain.mouthRuns.empty()) {
 			return;
 		}
-		constexpr float kCling = 0.45f;   // seconds on the skin before it lets go
+		constexpr float kCling = 0.2f;    // seconds on the skin before it lets go (0.8.0.9: was 0.45)
 		for (auto& particle : a_domain.particles) {
 			if (!particle.touching) {
 				continue;

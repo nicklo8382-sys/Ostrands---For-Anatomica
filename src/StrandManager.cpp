@@ -915,8 +915,7 @@ namespace OStrands
 		const auto& anchors = a_state.anchors;
 		const float depth = anchors.Depth(anchors.tip);
 		a_state.cooldown -= a_delta;
-		const bool messyMouth = settings.superMessy && OpeningOf(a_state.pair.act) == Opening::kMouth;   // 0.8.0.9
-		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * (messyMouth ? 2.0f : 1.0f) * a_delta, kMaxBudget);
+		a_state.bridgeBudget = std::min(a_state.bridgeBudget + settings.bridgeRate * a_delta, kMaxBudget);
 
 		// 0.8.0.8: precum strings - the tip touches the opening / lips and pulls away again without going in
 		if (!anchors.toy && settings.precumStrings) {
@@ -1057,7 +1056,7 @@ namespace OStrands
 			a_state.shaftSpit -= a_delta;
 			if (a_state.shaftSpit <= 0.0f) {
 				SpawnShaftSpit(a_state);
-				a_state.shaftSpit = std::max(std::exponential_distribution<float>(settings.spit * (settings.superMessy ? 2.0f : 1.0f) / settings.dripInterval)(_rng), 0.4f);
+				a_state.shaftSpit = std::max(std::exponential_distribution<float>(settings.spit / settings.dripInterval)(_rng), 0.4f);
 			}
 		}
 		// 0.8.0.9: super messy - webs of spit between his lips as he sucks (break after a few seconds)
@@ -1078,6 +1077,25 @@ namespace OStrands
 					web->creature = false;
 					++_statBridges;
 				}
+			}
+		}
+		// 0.8.0.9: super messy - spit drips off his lower lip and the corners of his mouth as he sucks (never the upper lip)
+		if (settings.superMessy && opening == Opening::kMouth && settings.spit > 0.0f && a_state.anchors.opening.size() >= 4 && a_state.anchors.receiverRoot) {
+			a_state.lipDrip -= a_delta;
+			if (a_state.lipDrip <= 0.0f) {
+				std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+				a_state.lipDrip = std::max(std::exponential_distribution<float>(2.0f * settings.spit / settings.dripInterval)(_rng), 0.35f);
+				const auto&       lips = a_state.anchors.opening;   // 0 upper lip, 1 lower lip, 2 / 3 the corners
+				const float       r = unit(_rng);
+				const std::size_t corner = unit(_rng) < 0.5f ? 2 : 3;
+				Point             from = lips[corner];               // a corner (40%)
+				if (r < 0.6f) {                                      // or somewhere along the lower lip
+					const float        t = r < 0.25f ? 0.0f : unit(_rng) * 0.75f;
+					const RE::NiPoint3 at = lips[1].World() * (1.0f - t) + lips[corner].World() * t;
+					from = Point{ lips[1].node, lips[1].node->world.Invert() * at };
+				}
+				SpawnDripAt(a_state.pair, Source::kReceiver, a_state.anchors.receiverRoot, { from }, 0.6f + 0.25f * unit(_rng), {},
+					settings.dripMaxPerSource * 2);
 			}
 		}
 		const bool    receiverDrips = opening == Opening::kMouth ? settings.oralDrips : !a_state.anchors.vulva.empty();
@@ -1181,10 +1199,8 @@ namespace OStrands
 		a_state.cooldown = settings.cooldown;
 
 		std::uniform_real_distribution<float> chance(0.0f, 1.0f);
-		const bool messy = settings.superMessy && OpeningOf(a_state.pair.act) == Opening::kMouth;   // 0.8.0.9
-		int count = 1 + (chance(_rng) < 0.4f ? 1 : 0) + (messy ? 1 : 0);
-		count = std::min({ count, static_cast<int>(a_state.bridgeBudget), settings.maxPerStroke + (messy ? 1 : 0),
-			settings.maxPerPair * (messy ? 2 : 1) - Count(a_state.pair, Kind::kBridge) });
+		int count = 1 + (chance(_rng) < 0.4f ? 1 : 0);
+		count = std::min({ count, static_cast<int>(a_state.bridgeBudget), settings.maxPerStroke, settings.maxPerPair - Count(a_state.pair, Kind::kBridge) });
 
 		std::vector<Point> rims = anchors.opening;
 		std::ranges::shuffle(rims, _rng);
@@ -1369,10 +1385,10 @@ namespace OStrands
 	}
 
 	void StrandManager::SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale,
-		const std::string& a_tint)
+		const std::string& a_tint, int a_cap)
 	{
 		const auto& settings = Settings::Get();
-		if (a_points.empty() || !a_root || Count(a_pair, Kind::kDrip, a_source) >= settings.dripMaxPerSource) {
+		if (a_points.empty() || !a_root || Count(a_pair, Kind::kDrip, a_source) >= (a_cap > 0 ? a_cap : settings.dripMaxPerSource)) {
 			return;
 		}
 		Strand* strand = AcquireStrand();

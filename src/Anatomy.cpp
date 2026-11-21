@@ -358,22 +358,12 @@ namespace OStrands
 			for (const RE::NiPoint3& offset : { up * (settings.lipHeight * std::sqrt(muzzle)), up * (-settings.lipHeight * std::sqrt(muzzle)), right * (settings.lipWidth * muzzle), right * (-settings.lipWidth * muzzle) }) {
 				a_points.push_back({ head, toHead * (a_center + offset) });
 			}
-			std::vector<Point> more;   // 0.8.0.9: super messy - more of both lips for the strings (added after the fangs)
-			if (settings.superMessy) {
-				for (const float side : { 0.5f, -0.5f }) {
-					for (const float lip : { 1.0f, -1.0f }) {
-						const RE::NiPoint3 at = a_center + right * (settings.lipWidth * muzzle * side) + up * (settings.lipHeight * std::sqrt(muzzle) * lip * 0.8f);
-						more.push_back({ head, toHead * at });
-					}
-				}
-			}
 			if (fangs) {   // just inside the corners, hanging a little below the upper lip
 				for (const float side : { 0.45f, -0.45f }) {
 					const RE::NiPoint3 fang = a_center + right * (settings.lipWidth * muzzle * side) + up * (settings.lipHeight * std::sqrt(muzzle) * 0.2f) + a_forward * (0.3f * head->world.scale);
 					a_points.push_back({ head, toHead * fang });
 				}
 			}
-			a_points.insert(a_points.end(), more.begin(), more.end());
 			return true;
 		}
 
