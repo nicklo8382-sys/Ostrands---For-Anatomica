@@ -24,6 +24,9 @@ namespace OStrands
 
 		void Reset();
 		void Update(float a_delta);
+		// 0.8.0.9e: a long-lasting strand of cum hanging from a point of his face (Anatomica): it stretches to a_maxLen
+		// (game units) and stays a_life seconds, then drips off; colour 0-1 rgb (null = the default)
+		bool FaceStrand(RE::Actor* a_actor, const RE::NiPoint3& a_point, float a_scale, float a_life, float a_maxLen, const float* a_rgb);
 
 		static constexpr std::size_t kBones = 10;
 
@@ -161,6 +164,8 @@ namespace OStrands
 			std::string                         tint;          // 0.8.0.8: its own diffuse texture ("" = the mesh's)
 			std::string                         tintApplied;
 			std::string                         baseDiffuse;   //   ... the mesh's, to put back
+			float                               life{ 0.0f };    // 0.8.0.9e: > 0 = a face strand: kept this long whatever the scene
+			float                               maxLen{ 0.0f };  // 0.8.0.9e: > 0 = it stops stretching at this length
 		};
 
 		struct Glint
@@ -227,7 +232,7 @@ namespace OStrands
 		void        SpawnCrotch(PairState& a_state);
 		void        SpawnSurface(PairState& a_state, const SurfaceSettings& a_surface);
 		void        SpawnDrip(PairState& a_state, Source a_source);
-		void        SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale = 1.0f,
+		Strand*     SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale = 1.0f,
 			const std::string& a_tint = {}, int a_cap = -1);
 		void        Retexture(Strand& a_strand);   // 0.8.0.8
 		void        TickBats(float a_delta);       // 0.8.0.8: a Vampire Lord bursting into bats snaps his strands

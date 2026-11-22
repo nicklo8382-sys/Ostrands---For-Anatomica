@@ -1409,22 +1409,35 @@ namespace OStrands
 		if (!best || bestDepth < -6.0f) {
 			return;
 		}
+		// 0.8.0.9e: spit as fluid on the shaft, not a drip hanging off it: a few clear drops on its underside just outside his
+		// lips, which cling and run down the shaft and on down the body (a hanging drip got in the way of the mouth)
 		const float        radius = a_state.shaftRadius > 0.0f ? a_state.shaftRadius : 1.0f;
 		const RE::NiPoint3 under = best->world.translate + RE::NiPoint3{ 0.0f, 0.0f, -radius * 0.9f };
-		SpawnDripAt(a_state.pair, Source::kGiver, anchors.giverRoot ? anchors.giverRoot : best, { Point{ best, best->world.Invert() * under } }, 0.8f);
+		RE::NiPoint3       along{ 0.0f, 0.0f, -4.0f };   // drawn away from his lips, along the shaft towards the base
+		if (anchors.chain.size() >= 2) {
+			RE::NiPoint3 d = anchors.chain.front()->world.translate - anchors.chain.back()->world.translate;
+			const float  l = d.Length();
+			if (l > 1e-3f) {
+				along = d * (6.0f / l) + RE::NiPoint3{ 0.0f, 0.0f, -2.0f };
+			}
+		}
+		static constexpr std::array<float, 3> kSpit{ 0.86f, 0.88f, 0.90f };
+		FluidManager::Get().Inject(a_state.pair.giver, 0, under, along, std::uniform_int_distribution<int>(3, 6)(_rng), kSpit);
 	}
 
-	void StrandManager::SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale,
+	StrandManager::Strand* StrandManager::SpawnDripAt(const Pair& a_pair, Source a_source, RE::NiAVObject* a_root, const std::vector<Point>& a_points, float a_scale,
 		const std::string& a_tint, int a_cap)
 	{
 		const auto& settings = Settings::Get();
 		if (a_points.empty() || !a_root || Count(a_pair, Kind::kDrip, a_source) >= (a_cap > 0 ? a_cap : settings.dripMaxPerSource)) {
-			return;
+			return nullptr;
 		}
 		Strand* strand = AcquireStrand();
 		if (!strand) {
-			return;
+			return nullptr;
 		}
+		strand->life = 0.0f;
+		strand->maxLen = 0.0f;
 		const Point        point = LowPoint(a_points, _rng);
 		const RE::NiPoint3 top = point.World();
 
@@ -1449,6 +1462,25 @@ namespace OStrands
 		strand->tint = a_tint;
 		Attach(*strand, a_root);
 		++_statDrips;
+		return strand;
+	}
+
+	bool StrandManager::FaceStrand(RE::Actor* a_actor, const RE::NiPoint3& a_point, float a_scale, float a_life, float a_maxLen, const float* a_rgb)
+	{
+		auto* root = a_actor ? a_actor->Get3D(false) : nullptr;
+		auto* head = root ? root->GetObjectByName(RE::BSFixedString("NPC Head [Head]")) : nullptr;
+		if (!head || !EnsureMesh()) {
+			return false;
+		}
+		const std::string tint = a_rgb ? TintTexturePath({ a_rgb[0], a_rgb[1], a_rgb[2] }) : std::string();
+		Strand* strand = SpawnDripAt(SelfPair(a_actor->GetHandle()), Source::kGiver, root, { Point{ head, head->world.Invert() * a_point } },
+			std::clamp(a_scale, 0.3f, 2.0f), tint, 24);
+		if (!strand) {
+			return false;
+		}
+		strand->life = std::max(a_life, 1.0f);
+		strand->maxLen = std::max(a_maxLen, 0.5f);
+		return true;
 	}
 
 	void StrandManager::BeginLinger(const PairState& a_state)
@@ -1635,7 +1667,13 @@ namespace OStrands
 
 		for (int step = 0; step < kSubsteps; ++step) {
 			const float velocityScale = damping * GeometryMath::DisplacementScale(h, a_strand.previousStep);
-			if (drip && a_strand.breakAt < 0) {
+			float grown = 0.0f;
+			if (drip && a_strand.maxLen > 0.0f) {   // 0.8.0.9e: a face strand stops stretching at its length
+				for (const float rest : a_strand.rest) {
+					grown += rest;
+				}
+			}
+			if (drip && a_strand.breakAt < 0 && (a_strand.maxLen <= 0.0f || grown < a_strand.maxLen)) {
 				const float growth = std::exp(h / std::max(settings.dripStretchTime, 0.05f));
 				for (auto& rest : a_strand.rest) {
 					rest *= growth;
@@ -1760,7 +1798,9 @@ namespace OStrands
 			const float t = static_cast<float>(i) / last;
 			float       radius;
 			if (drip) {
-				radius = a_strand.radius * (1.0f + 0.6f * std::max(0.0f, 1.0f - 4.0f * t));
+				// 0.8.0.9e: a thin neck where it leaves the skin, swelling to its size a quarter of the way down (it was 1.6x as
+				// thick at the top - a stiff stub standing off his lips that did not look attached)
+				radius = a_strand.radius * (0.4f + 0.6f * std::min(1.0f, 4.0f * t));
 				if (i == last) {
 					radius = std::max(a_strand.radius * 2.4f, settings.dripRadius * 1.1f);
 				} else if (i == last - 1) {
@@ -2003,7 +2043,11 @@ namespace OStrands
 			}
 			auto pair = std::ranges::find_if(_pairs, [&](const PairState& s) { return s.pair == strand.pair && s.resolved; });
 			const int middle = static_cast<int>(kBones) / 2 - 1;
-			if (strand.kind == Kind::kDrip) {
+			if (strand.kind == Kind::kDrip && strand.life > 0.0f) {   // 0.8.0.9e: a face strand: its own time, then it drips off
+				if (strand.age >= strand.life && strand.breakAt < 0) {
+					Snap(strand, 1, settings.dripFadeTime);
+				}
+			} else if (strand.kind == Kind::kDrip) {
 				const bool lingering = std::ranges::any_of(_lingering, [&](const Linger& a_linger) {
 					return a_linger.pair == strand.pair && a_linger.source == strand.source;
 				});

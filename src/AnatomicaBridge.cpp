@@ -6,6 +6,7 @@
 
 #include "FluidManager.h"
 #include "Settings.h"
+#include "StrandManager.h"
 
 namespace OStrands::AnatomicaBridge
 {
@@ -200,7 +201,28 @@ extern "C"
 {
 	__declspec(dllexport) int OStrands_ApiVersion()
 	{
-		return 2;   // 0.8.0.7: OStrands_EmitGlow
+		return 3;   // 0.8.0.7: OStrands_EmitGlow; 0.8.0.9e: OStrands_FaceStrand
+	}
+
+	// 0.8.0.9e: a long-lasting strand of cum hanging from a point of an actor's face (any thread; made on the next frame).
+	// point: world position on his face; scale: thickness (1 = a normal drip); life: seconds it stays; maxLen: the length it
+	// stretches to (game units); rgb: 0-1 colour or null.
+	__declspec(dllexport) bool OStrands_FaceStrand(RE::Actor* a_actor, const float* a_point, float a_scale, float a_life, float a_maxLen, const float* a_rgb)
+	{
+		auto* tasks = SKSE::GetTaskInterface();
+		if (!a_actor || !a_point || !tasks) {
+			return false;
+		}
+		const RE::ActorHandle    handle = a_actor->GetHandle();
+		const RE::NiPoint3       point{ a_point[0], a_point[1], a_point[2] };
+		const bool               hasRgb = a_rgb != nullptr;
+		const std::array<float, 3> rgb = hasRgb ? std::array<float, 3>{ a_rgb[0], a_rgb[1], a_rgb[2] } : std::array<float, 3>{};
+		tasks->AddTask([handle, point, a_scale, a_life, a_maxLen, hasRgb, rgb]() {
+			if (const auto actor = handle.get()) {
+				OStrands::StrandManager::Get().FaceStrand(actor.get(), point, a_scale, a_life, a_maxLen, hasRgb ? rgb.data() : nullptr);
+			}
+		});
+		return true;
 	}
 
 	// Adds semen particles at a world point (any thread). host: the actor it belongs to (it collides with and is drawn near them).

@@ -129,7 +129,7 @@ namespace OStrands
 		float dribble{ 0.5f };       // how fast the mouth lets it out of the corners (1 = as any opening; lower holds it longer)
 		float cough{ 0.08f };        // chance a second, while the mouth is very full, of a cough that pushes some out
 		float spit{ 1.0f };          // spit: how often drool strings and drips come from the mouth during oral (0 = none, 3 = sloppy)
-		bool  spitShaft{ true };     // the shaft drips spit during a blowjob
+		bool  spitShaft{ true };     // the shaft drips spit during a blowjob (0.8.0.9e: as fluid that runs down the shaft, not hanging drips)
 		float droolTime{ 20.0f };    // seconds of drool strings from the lip corners after oral
 		bool  noseDrip{ false };     // a very full mouth can drip from the nose too
 		float facialChance{ 0.2f };  // 0.8.0.8: chance a finish in the mouth pulls out onto the face instead
