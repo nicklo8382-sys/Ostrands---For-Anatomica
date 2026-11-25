@@ -159,6 +159,11 @@ namespace OStrands::OStimBridge
 			}
 			if (*act == Act::kFellatio) {
 				std::swap(actor, target);
+				// 0.8.0.9f: some canine scenes name the animal as the one doing the action - its schlong is the one in his
+				// mouth (its finish was "no penetration" and came out deep in his throat, not in his mouth)
+				if (actor != target && person(actor) && !person(target)) {
+					std::swap(actor, target);
+				}
 			}
 			return Pair{ actor->GetHandle(), target->GetHandle(), *act };
 		}
