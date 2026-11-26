@@ -400,6 +400,7 @@ namespace OStrands::SettingsMenu
 			page.push_back(std::make_unique<Slider<float>>("Out of the nose", "Chance a finish in the mouth comes out of the nose too. 0 = never.", &Settings::noseChance, 0.0f, 1.0f, 0.01f, on));
 			page.push_back(std::make_unique<Slider<float>>("Nose, deep in the throat", "Added to that chance when the tip is deep in the throat.", &Settings::noseDeep, 0.0f, 1.0f, 0.01f, on));
 			page.push_back(std::make_unique<Slider<float>>("Nose amount", "How much comes out of the nose (a Colossal Load is double).", &Settings::noseAmount, 0.1f, 4.0f, 0.05f, on));
+			page.push_back(std::make_unique<Slider<float>>("Bursts out round the lips", "How much of each spurt into a full mouth bursts straight back out round the lips and the shaft (a Colossal Load more). 0 = it all stays in.", &Settings::mouthSpray, 0.0f, 1.0f, 0.05f, on));
 			page.push_back(std::make_unique<Toggle>("Kissing strings", "Strings of spit between the lips as a kiss parts.", &Settings::kissStrings, on));
 			page.push_back(std::make_unique<Toggle>("Snowballing", "A kiss passes cum held in one mouth into the other.", &Settings::snowball, on));
 			page.push_back(std::make_unique<Toggle>("Super messy", "Oral leaves far more round his mouth: spit drips off his lower lip and the corners of his mouth as he sucks, webs of spit between his lips, and drool for twice as long after. The shaft gets no more than usual.", &Settings::superMessy, on));

@@ -172,6 +172,7 @@ namespace OStrands
 		float noseChance{ 0.1f };    // 0.8.0.8: chance a mouth finish comes out of the nose too
 		float noseDeep{ 0.25f };     //   ... added when the tip is deep in the throat
 		float noseAmount{ 1.0f };    //   ... x how much
+		float mouthSpray{ 0.35f };   // 0.8.0.9g: share of each spurt in the mouth that bursts back out round the lips (a Colossal Load more)
 		// 0.8.0.8: precum in scenes, by OStim excitement
 		bool  precum{ true };        // the tip beads and drips more as he gets close
 		float precumFrom{ 55.0f };   // OStim excitement it starts at (0-100)

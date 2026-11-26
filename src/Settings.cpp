@@ -340,6 +340,7 @@ namespace OStrands
 			f("Oral", "NoseChance", &Settings::noseChance);
 			f("Oral", "NoseDeep", &Settings::noseDeep);
 			f("Oral", "NoseAmount", &Settings::noseAmount);
+			f("Oral", "MouthSpray", &Settings::mouthSpray);
 			b("Precum", "Enabled", &Settings::precum);
 			f("Precum", "From", &Settings::precumFrom);
 			f("Precum", "Rate", &Settings::precumRate);
@@ -480,6 +481,7 @@ namespace OStrands
 		noseChance = fin(noseChance, 0.0f, 1.0f, 0.1f);
 		noseDeep = fin(noseDeep, 0.0f, 1.0f, 0.25f);
 		noseAmount = fin(noseAmount, 0.1f, 4.0f, 1.0f);
+		mouthSpray = fin(mouthSpray, 0.0f, 1.0f, 0.35f);
 		dribble = fin(dribble, 0.05f, 2.0f, 0.5f);
 		cough = fin(cough, 0.0f, 1.0f, 0.08f);
 		spit = fin(spit, 0.0f, 3.0f, 1.0f);
@@ -758,6 +760,7 @@ namespace OStrands
 		f("Oral", "NoseChance", noseChance);
 		f("Oral", "NoseDeep", noseDeep);
 		f("Oral", "NoseAmount", noseAmount);
+		f("Oral", "MouthSpray", mouthSpray);
 		b("Precum", "Enabled", precum);
 		f("Precum", "From", precumFrom);
 		f("Precum", "Rate", precumRate);

@@ -992,7 +992,28 @@ namespace OStrands
 				a_emitter.count = a_emitter.oozing ? std::max(1, static_cast<int>(std::lround(pulse.particles * overflow))) :
 				                                     pulse.particles;
 				if (a_emitter.oozing) {
-					Deposit(a_emitter, static_cast<float>(pulse.particles - a_emitter.count));
+					// 0.8.0.9g: a spurt into the mouth bursts partly straight back out round his lips and the shaft - a splatter
+					// round the mouth, not only a slow dribble (a Colossal Load more, and more as the mouth fills)
+					int burst = 0;
+					if (a_emitter.pair && OpeningOf(a_emitter.pair->act) == Opening::kMouth && settings.mouthSpray > 0.0f && rim.size() >= 3) {
+						const float share = std::min(settings.mouthSpray * (a_emitter.creature ? 1.5f : 1.0f) * (0.6f + 0.25f * static_cast<float>(a_emitter.pulse)), 0.9f);
+						burst = std::min(static_cast<int>(std::lround(pulse.particles * share)), pulse.particles - a_emitter.count);
+						const RE::NiPoint3 outward = -inward;
+						const int          jets = 3 + static_cast<int>(unit(_rng) * 3.0f);
+						for (int jt = 0; jt < jets && burst > 0; ++jt) {
+							const RE::NiPoint3 at = rim[static_cast<std::size_t>(unit(_rng) * static_cast<float>(rim.size())) % rim.size()].World();
+							RE::NiPoint3       radial = at - center;
+							radial -= outward * radial.Dot(outward);
+							radial = Normalized(radial, { 0.0f, 0.0f, -1.0f });
+							const float        sp = (0.6f + 0.8f * unit(_rng)) * std::max(pulse.speed * 0.35f, 0.6f);
+							const RE::NiPoint3 vel = (outward * 1.1f + radial * (0.8f + 0.6f * unit(_rng))) * sp;
+							Inject(a_emitter.pair->receiver, 0, at + outward * 0.4f + radial * 0.3f, vel, std::max(2, burst / jets), a_emitter.colour);
+						}
+						if (settings.debugLog && a_emitter.pulse == 0) {
+							logger::info("a mouth finish bursts out round the lips ({} jets, {} particles a spurt)", jets, burst);
+						}
+					}
+					Deposit(a_emitter, static_cast<float>(pulse.particles - a_emitter.count - burst));
 					// 0.8.0.8: a finish in the mouth can come out of the nose too (more likely deep in the throat)
 					if (!a_emitter.noseRolled && a_emitter.pair && OpeningOf(a_emitter.pair->act) == Opening::kMouth && settings.noseChance > 0.0f) {
 						a_emitter.noseRolled = true;
@@ -2140,6 +2161,9 @@ namespace OStrands
 			if (settings.debugLog && !anchor && run.Size() >= 2 && run.Size() <= 4) {
 				Watch(a_domain, run);
 			}
+			if (!anchor && run.Size() >= 2 && run.Size() <= 4) {   // 0.8.0.9h
+				Calm(a_domain, run);
+			}
 			if (run.Size() >= 2 || anchor) {
 				if (Rope* rope = AcquireRope(a_domain)) {
 					PoseRope(a_domain, *rope, run.begin, run.end, anchor);
@@ -2192,6 +2216,42 @@ namespace OStrands
 		a_domain.shownBlobs = blobs;
 		a_domain.shownRopes = ropes;
 		a_domain.pooled = pooled.size();
+	}
+
+	// 0.8.0.9h: a short string of drops lying on skin could spin on the spot (its two ends moving opposite ways, fast) - the
+	// rope drawn through it turned like a little wheel (on the tip of a schlong, say). Lying still, its drops move together:
+	// what turns them round each other is taken out
+	void FluidManager::Calm(Domain& a_domain, const Fluid::Run& a_run)
+	{
+		auto&       particles = a_domain.particles;
+		const auto& first = particles[a_run.begin];
+		const auto& last = particles[a_run.end - 1];
+		const Vec3  span = last.position - first.position;
+		const float length = Fluid::Length(span);
+		if (length < 1e-4f) {
+			return;
+		}
+		const bool resting = std::all_of(particles.begin() + static_cast<std::ptrdiff_t>(a_run.begin), particles.begin() + static_cast<std::ptrdiff_t>(a_run.end),
+			[&](const Fluid::Particle& a_particle) {
+				return a_particle.touching || a_particle.position.z - a_domain.ground.Height(a_particle.position.x, a_particle.position.y) < kSpacing;
+			});
+		if (!resting) {
+			return;
+		}
+		const Vec3  axis = span * (1.0f / length);
+		const Vec3  relative = last.velocity - first.velocity;
+		const float turn = Fluid::Length(relative - axis * Fluid::Dot(relative, axis)) / length;
+		if (turn < kSpinning * 0.5f) {
+			return;
+		}
+		Vec3 mean{};
+		for (std::size_t i = a_run.begin; i < a_run.end; ++i) {
+			mean = mean + particles[i].velocity;
+		}
+		mean = mean * (1.0f / static_cast<float>(a_run.Size()));
+		for (std::size_t i = a_run.begin; i < a_run.end; ++i) {
+			particles[i].velocity = mean + (particles[i].velocity - mean) * 0.1f;
+		}
 	}
 
 	void FluidManager::Watch(Domain& a_domain, const Fluid::Run& a_run)

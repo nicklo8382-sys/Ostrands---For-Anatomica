@@ -234,6 +234,7 @@ namespace OStrands
 		void        Expire(Domain& a_domain, float a_delta);
 		void        Draw(Domain& a_domain);
 		void        Watch(Domain& a_domain, const Fluid::Run& a_run);
+		void        Calm(Domain& a_domain, const Fluid::Run& a_run);   // 0.8.0.9h
 		Meshes&     MeshesFor();
 		RE::NiNode* CollisionMesh();
 		Blob*       AcquireBlob(Domain& a_domain);
