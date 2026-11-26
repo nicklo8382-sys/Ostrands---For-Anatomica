@@ -898,6 +898,15 @@ namespace OStrands
 				}
 			}
 		}
+		// 0.8.0.9g: a facial only once he has really pulled out - a scene that keeps the tip deep in his mouth (a face-fuck
+		// that never pulls back) had the load start in front of his face and land on his chin; it now stays a mouth finish,
+		// and what does not fit comes out round his lips
+		if (a_emitter.facial && inside) {
+			a_emitter.facial = false;
+			if (settings.debugLog) {
+				logger::info("still deep in the mouth: no facial - it fills the mouth instead");
+			}
+		}
 		if (a_emitter.facial && a_emitter.pair) {   // 0.8.0.8: from just in front of the face, at it
 			const auto receiver = a_emitter.pair->receiver.get();
 			auto*      receiver3D = receiver ? receiver->Get3D(false) : nullptr;
